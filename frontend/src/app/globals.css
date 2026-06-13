@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 26, 77, 46; /* #1A4D2E */
+  --background-start-rgb: 251, 251, 242; /* #FBFBF2 Cream */
+  --background-end-rgb: 254, 252, 232;   /* #FEFCE8 Cream Lighter */
+  
+  --primary-green: #1A4D2E;
+  --accent-green: #4ADE80;
+  --soft-green: #E8F5E9;
+  --text-main: #1A4D2E;
+  --text-secondary: #5F6F65;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  min-height: 100vh;
+}
+
+/* ✅ Funky Glassmorphism Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ✅ Moving Gradient Animation */
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 300% 300%;
+  animation: gradientMove 5s ease infinite;
+}
+
+/* ✅ Sidebar Aurora Animation */
+@keyframes auroraSlide {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.sidebar-aurora {
+  background-image: radial-gradient(circle at 20% 20%, rgba(46, 139, 87, 0.9), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(244, 184, 96, 0.85), transparent 55%),
+    radial-gradient(circle at 10% 80%, rgba(25, 77, 46, 0.9), transparent 60%),
+    linear-gradient(135deg, #0b1a11, #113524, #1A4D2E, #2F6E48, #0f2618);
+  background-size: 400% 400%;
+  animation: auroraSlide 12s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes pulseSlow {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+}
+
+/* ✅ Coffee Loader Animations */
+@keyframes steam {
+  0% {
+    transform: translateY(0) scaleX(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-15px) scaleX(1.5);
+  }
+  95% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(-30px) scaleX(2);
+    opacity: 0;
+  }
+}
+
+.animate-steam-1 {
+  animation: steam 2s infinite ease-out;
+  animation-delay: 0.2s;
+}
+.animate-steam-2 {
+  animation: steam 2s infinite ease-out;
+  animation-delay: 0.6s;
+}
+.animate-steam-3 {
+  animation: steam 2s infinite ease-out;
+  animation-delay: 1.0s;
+}
+
+@keyframes fillCoffee {
+  0% { height: 0%; }
+  100% { height: 85%; }
+}
+
+.animate-fill-coffee {
+  animation: fillCoffee 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes wave {
+  0% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-25%) translateY(2px); }
+  100% { transform: translateX(-50%) translateY(0); }
+}
+
+.animate-wave {
+  animation: wave 3s linear infinite;
+}
+
