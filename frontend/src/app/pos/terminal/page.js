@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Search, ShoppingCart, RefreshCw, Power, Coffee, User, Edit2, Plus } from "lucide-react";
 import CustomerModal from "@/components/pos/CustomerModal";
+import CloseSessionModal from "@/components/pos/CloseSessionModal";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { useCartStore } from "@/stores/cart-store";
 
@@ -12,7 +13,7 @@ export default function POSTerminalPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const { cart, addItem, customer, setCustomer } = useCartStore();
+  const { cart, addItem, customer, setCustomer, orderId } = useCartStore();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [session, setSession] = useState(null);
@@ -132,6 +133,15 @@ export default function POSTerminalPage() {
               <p className="text-lg font-bold text-[#1A4D2E]">{cart.length} items</p>
             </div>
           </div>
+
+          {orderId && (
+            <>
+              <div className="h-8 w-px bg-[#E8F5E9]"></div>
+              <span className="px-3.5 py-1.5 rounded-full text-xs font-black bg-orange-100 text-orange-700 uppercase tracking-wider border border-orange-200">
+                ✏️ Editing Active Order
+              </span>
+            </>
+          )}
         </div>
         
         <div className="flex items-center gap-3">

@@ -28,6 +28,8 @@ export default function CartPage() {
   const [couponSuccess, setCouponSuccess] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
 
+  const [availableTables, setAvailableTables] = useState([]);
+
   useEffect(() => {
     const tableData = localStorage.getItem('selectedTable');
     if (tableData) {
@@ -37,7 +39,25 @@ export default function CartPage() {
       setCouponInput(coupon.code);
       setCouponSuccess(`Applied: ${coupon.code}`);
     }
+    fetchAvailableTables();
   }, [coupon]);
+
+  const fetchAvailableTables = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/floors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const floorsData = await res.json();
+        const tables = floorsData.flatMap(f => f.tables || []).filter(t => t.status === 'AVAILABLE');
+        setAvailableTables(tables);
+      }
+    } catch (error) {
+      console.error("Failed to load available tables:", error);
+    }
+  };
 
   const getCartSubtotal = () => {
     return cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
@@ -454,13 +474,47 @@ export default function CartPage() {
               </div>
             </div>
 
-            {/* Table Info */}
-            {selectedTable && (
-              <div className="bg-[#E8F5E9] rounded-[2rem] p-4 border border-[#4ADE80]/30 text-center">
-                <p className="text-xs text-[#5F6F65] uppercase tracking-wider font-bold">Selected Table</p>
-                <p className="font-black text-[#1A4D2E] text-xl mt-1">{selectedTable.name}</p>
-              </div>
-            )}
+            {/* Table Selector */}
+            <div className="bg-white rounded-[2rem] p-6 shadow-md border border-[#E8F5E9] space-y-4">
+              <h3 className="font-bold text-[#1A4D2E] text-base uppercase tracking-wider border-b pb-1">Table Association</h3>
+              {selectedTable ? (
+                <div className="bg-[#E8F5E9] rounded-[1.5rem] p-4 border border-[#4ADE80]/30 text-center">
+                  <p className="text-xs text-[#5F6F65] uppercase tracking-wider font-bold">Selected Table</p>
+                  <p className="font-black text-[#1A4D2E] text-xl mt-1">{selectedTable.name}</p>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('selectedTable');
+                      setSelectedTable(null);
+                      fetchAvailableTables();
+                    }}
+                    className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider block mx-auto mt-3 border border-red-200 hover:border-red-600 px-3 py-1 rounded-full bg-white"
+                  >
+                    Change Table
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-[#5F6F65] font-bold uppercase tracking-wider">Select Empty Table</p>
+                  <select
+                    onChange={(e) => {
+                      const tableId = e.target.value;
+                      if (!tableId) return;
+                      const table = availableTables.find(t => t.id === tableId);
+                      if (table) {
+                        localStorage.setItem('selectedTable', JSON.stringify(table));
+                        setSelectedTable(table);
+                      }
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] focus:outline-none bg-white font-semibold text-sm"
+                  >
+                    <option value="">Choose empty table...</option>
+                    {availableTables.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.seats} seats)</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

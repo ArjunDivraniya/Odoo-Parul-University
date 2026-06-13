@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Users, Monitor, CreditCard, List, Save, Plus, Trash2, Edit2, X, Check, Eye, EyeOff } from "lucide-react";
+import { Settings as SettingsIcon, Users, Monitor, CreditCard, List, Save, Plus, Trash2, Edit2, X, Check, Eye, EyeOff, Layers } from "lucide-react";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 
 export default function SettingsPage() {
@@ -22,12 +22,16 @@ export default function SettingsPage() {
   const [users, setUsers] = useState([]);
   const [terminals, setTerminals] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [floors, setFloors] = useState([]);
 
   // Modal States
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showTerminalModal, setShowTerminalModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showFloorModal, setShowFloorModal] = useState(false);
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [selectedFloorId, setSelectedFloorId] = useState(null);
 
   // Initial Fetch
   useEffect(() => {
@@ -41,17 +45,19 @@ export default function SettingsPage() {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const [settingsRes, usersRes, terminalsRes, catsRes] = await Promise.all([
+      const [settingsRes, usersRes, terminalsRes, catsRes, floorsRes] = await Promise.all([
         fetch(`${API_URL}/settings`, { headers }),
         fetch(`${API_URL}/users`, { headers }),
         fetch(`${API_URL}/terminals`, { headers }),
-        fetch(`${API_URL}/products/categories`, { headers })
+        fetch(`${API_URL}/products/categories`, { headers }),
+        fetch(`${API_URL}/floors`, { headers })
       ]);
 
       if (settingsRes.ok) setSettings(await settingsRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
       if (terminalsRes.ok) setTerminals(await terminalsRes.json());
       if (catsRes.ok) setCategories(await catsRes.json());
+      if (floorsRes.ok) setFloors(await floorsRes.json());
 
     } catch (error) {
       console.error("Failed to load settings:", error);
@@ -181,6 +187,55 @@ export default function SettingsPage() {
     }
   };
 
+  // Floors
+  const handleSaveFloor = async (name) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/floors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name })
+      });
+      if (res.ok) {
+        fetchData();
+        setShowFloorModal(false);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to create floor");
+      }
+    } catch (e) { alert(e.message); }
+  };
+
+  // Tables
+  const handleSaveTable = async (name, seats) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/floors/${selectedFloorId}/tables`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name, seats })
+      });
+      if (res.ok) {
+        fetchData();
+        setShowTableModal(false);
+        setSelectedFloorId(null);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to create table");
+      }
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleDeleteTable = async (id) => {
+    if (!confirm("Delete this table?")) return;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+    const token = localStorage.getItem('token');
+    await fetch(`${API_URL}/tables/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    fetchData();
+  };
+
 
   const tabs = [
     { id: "general", label: "General", icon: SettingsIcon },
@@ -188,6 +243,7 @@ export default function SettingsPage() {
     { id: "terminals", label: "Terminals", icon: Monitor },
     { id: "payments", label: "Payments", icon: CreditCard },
     { id: "categories", label: "Categories", icon: List },
+    { id: "tables", label: "Tables", icon: Layers },
   ];
 
   if (loading) return (
@@ -348,6 +404,60 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Tables */}
+            {activeTab === "tables" && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-2xl font-bold text-coffee-800">Tables & Floors Architecture</h3>
+                  <button onClick={() => setShowFloorModal(true)} className="btn-primary-sm">
+                    <Plus className="h-4 w-4" /> Add Floor
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {floors.map(floor => (
+                    <div key={floor.id} className="p-6 rounded-2xl border border-gray-100 bg-[#FBFBF2] space-y-4">
+                      <div className="flex justify-between items-center border-b pb-2">
+                        <h4 className="text-lg font-bold text-[#1A4D2E]">{floor.name}</h4>
+                        <button
+                          onClick={() => {
+                            setSelectedFloorId(floor.id);
+                            setShowTableModal(true);
+                          }}
+                          className="px-3 py-1.5 bg-[#E8F5E9] text-[#1A4D2E] rounded-xl font-bold text-xs flex items-center gap-1 hover:bg-[#1A4D2E] hover:text-white transition-all border border-[#1A4D2E]/20"
+                        >
+                          <Plus className="h-3 w-3" /> Add Table
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {floor.tables?.map(table => (
+                          <div key={table.id} className="p-4 rounded-xl border border-gray-100 bg-white flex justify-between items-center hover:shadow-md transition">
+                            <div>
+                              <p className="font-bold text-[#1A4D2E]">{table.name}</p>
+                              <p className="text-xs text-gray-400 font-semibold uppercase mt-0.5">{table.seats} Seats • {table.status}</p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteTable(table.id)}
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                        {(!floor.tables || floor.tables.length === 0) && (
+                          <p className="text-xs text-gray-400 italic col-span-3 py-2">No tables on this floor yet</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {floors.length === 0 && (
+                    <p className="text-sm text-gray-400 italic text-center py-10">No floors configured. Click Add Floor to start!</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Payments */}
             {activeTab === "payments" && (
               <div className="space-y-6">
@@ -419,6 +529,23 @@ export default function SettingsPage() {
           label="Category Name"
           onClose={() => setShowCategoryModal(false)}
           onSave={handleSaveCategory}
+        />
+      )}
+      {showFloorModal && (
+        <InputModal
+          title="Add Floor"
+          label="Floor Name"
+          onClose={() => setShowFloorModal(false)}
+          onSave={handleSaveFloor}
+        />
+      )}
+      {showTableModal && (
+        <TableInputModal
+          onClose={() => {
+            setShowTableModal(false);
+            setSelectedFloorId(null);
+          }}
+          onSave={handleSaveTable}
         />
       )}
 
@@ -494,6 +621,33 @@ function UserModal({ user, onClose, onSave }) {
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="flex-1 py-3 font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Cancel</button>
           <button onClick={() => onSave(data)} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl hover:bg-[#143D24]">Save User</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableInputModal({ onClose, onSave }) {
+  const [name, setName] = useState("");
+  const [seats, setSeats] = useState("4");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <h3 className="text-xl font-bold text-coffee-800">Add Table</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">Table Name</label>
+            <input autoFocus placeholder="e.g. Table 1" className="w-full px-4 py-2 border rounded-xl outline-none focus:border-[#1A4D2E]" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-600 mb-1">Seats Count</label>
+            <input type="number" className="w-full px-4 py-2 border rounded-xl outline-none focus:border-[#1A4D2E]" value={seats} onChange={e => setSeats(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl">Cancel</button>
+          <button onClick={() => onSave(name, seats)} disabled={!name || !seats} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl">Save</button>
         </div>
       </div>
     </div>
