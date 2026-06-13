@@ -183,7 +183,16 @@ export default function POSOrdersPage() {
           </div>
 
           {/* Footer Actions */}
-          <div className="p-5 border-t border-[#E8F5E9] bg-[#FBFBF2]">
+          <div className="p-5 border-t border-[#E8F5E9] bg-[#FBFBF2] space-y-3">
+            {order.status !== 'PAID' && order.status !== 'CANCELLED' && (
+              <button
+                onClick={() => window.location.href = `/pos/payment?orderId=${order.id}`}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#F5A623] hover:bg-[#D48A14] text-white font-bold transition-all shadow-lg"
+              >
+                <Receipt className="h-5 w-5" />
+                Pay Now
+              </button>
+            )}
             <button
               onClick={handleEmailReceipt}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1A4D2E] text-white font-bold hover:bg-[#143d24] transition-colors shadow-lg"

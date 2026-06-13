@@ -15,16 +15,47 @@ export default function POSPaymentPage() {
   const [processing, setProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [showUPIModal, setShowUPIModal] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [existingOrder, setExistingOrder] = useState(null);
 
   useEffect(() => {
     // Only check for valid session or redirect
     const activeSession = localStorage.getItem('activeSession');
     if (!activeSession) {
       window.location.href = '/pos/session';
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('orderId');
+    if (id) {
+      setOrderId(id);
+      fetchOrderDetails(id);
     }
   }, []);
 
+  const fetchOrderDetails = async (id) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/orders/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExistingOrder(data);
+      } else {
+        alert("Failed to load order details");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const getTotal = () => {
+    if (existingOrder) {
+      return Number(existingOrder.totalAmount);
+    }
     return cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
   };
 
@@ -45,32 +76,37 @@ export default function POSPaymentPage() {
         throw new Error("No active session found. Please start a session from the Dashboard.");
       }
 
-      // Step 1: Create Order
-      const orderPayload = {
-        sessionId: session.id,
-        type: "DINE_IN",
-        items: cart.map(item => ({
-          productId: item.id,
-          quantity: item.quantity
-        })),
-        customer: customer || undefined
-      };
+      let currentOrderId = orderId;
 
-      const orderResponse = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(orderPayload)
-      });
+      if (!existingOrder) {
+        // Step 1: Create Order
+        const orderPayload = {
+          sessionId: session.id,
+          type: "DINE_IN",
+          items: cart.map(item => ({
+            productId: item.id,
+            quantity: item.quantity
+          })),
+          customer: customer || undefined
+        };
 
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.text();
-        throw new Error(`Failed to create order: ${errorData || orderResponse.statusText}`);
+        const orderResponse = await fetch(`${API_URL}/orders`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(orderPayload)
+        });
+
+        if (!orderResponse.ok) {
+          const errorData = await orderResponse.text();
+          throw new Error(`Failed to create order: ${errorData || orderResponse.statusText}`);
+        }
+
+        const order = await orderResponse.json();
+        currentOrderId = order.id;
       }
-
-      const order = await orderResponse.json();
 
       // Step 2: Process Payment
       const paymentPayload = {
@@ -79,7 +115,7 @@ export default function POSPaymentPage() {
         reference: paymentMethod === 'UPI' ? 'UPI_REF_' + Date.now() : undefined
       };
 
-      const paymentResponse = await fetch(`${API_URL}/orders/${order.id}/pay`, {
+      const paymentResponse = await fetch(`${API_URL}/orders/${currentOrderId}/pay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,28 +129,34 @@ export default function POSPaymentPage() {
         throw new Error(`Failed to process payment: ${errorData || paymentResponse.statusText}`);
       }
 
-      // Step 3: Update order status to SENT (so it appears in kitchen)
-      await fetch(`${API_URL}/orders/${order.id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'SENT' })
-      });
+      if (!existingOrder) {
+        // Step 3: Update order status to SENT (so it appears in kitchen)
+        await fetch(`${API_URL}/orders/${currentOrderId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: 'SENT' })
+        });
 
-      // Clear cart and show success
-      clearCart(); // Clear global store and localStorage
-      
-      localStorage.removeItem('pendingOrder');
-      localStorage.removeItem('pendingCustomer');
+        // Clear cart and show success
+        clearCart(); // Clear global store and localStorage
+        
+        localStorage.removeItem('pendingOrder');
+        localStorage.removeItem('pendingCustomer');
+      }
       
       setProcessing(false); // Stop loader
       setOrderComplete(true); // Show success
 
-      // Redirect to floor view after 2 seconds
+      // Redirect after 2 seconds
       setTimeout(() => {
-        window.location.href = '/pos/tables';
+        if (existingOrder) {
+          window.location.href = '/pos/orders';
+        } else {
+          window.location.href = '/pos/tables';
+        }
       }, 2000);
 
     } catch (error) {
@@ -154,11 +196,11 @@ export default function POSPaymentPage() {
         {/* Header */}
         <div className="p-8 border-b border-[#E8F5E9]">
           <button
-            onClick={() => window.location.href = '/pos/terminal'}
+            onClick={() => window.location.href = existingOrder ? '/pos/orders' : '/pos/terminal'}
             className="flex items-center gap-2 text-[#5F6F65] hover:text-[#1A4D2E] mb-4 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
-            Back to Cart
+            {existingOrder ? 'Back to Orders' : 'Back to Cart'}
           </button>
           <h1 className="text-3xl font-bold text-[#1A4D2E]">Payment</h1>
         </div>
@@ -168,12 +210,21 @@ export default function POSPaymentPage() {
           <div className="bg-[#FBFBF2] rounded-[2rem] p-6 mb-8 border border-[#E8F5E9]">
             <h3 className="font-bold text-[#1A4D2E] mb-4">Order Summary</h3>
             <div className="space-y-2 mb-4">
-              {cart.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span className="text-[#5F6F65]">{item.quantity}x {item.name}</span>
-                  <span className="font-semibold text-[#1A4D2E]">₹{(Number(item.price) * item.quantity).toFixed(2)}</span>
-                </div>
-              ))}
+              {existingOrder ? (
+                existingOrder.items?.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-[#5F6F65]">{item.quantity}x {item.productName}</span>
+                    <span className="font-semibold text-[#1A4D2E]">₹{(Number(item.price) * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-[#5F6F65]">{item.quantity}x {item.name}</span>
+                    <span className="font-semibold text-[#1A4D2E]">₹{(Number(item.price) * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))
+              )}
             </div>
             <div className="border-t border-[#E8F5E9] pt-4 flex justify-between items-center">
               <span className="text-lg font-bold text-[#1A4D2E]">Total</span>

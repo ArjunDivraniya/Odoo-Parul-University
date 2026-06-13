@@ -224,6 +224,8 @@ export default function KitchenPage() {
                     <span className="text-xs font-bold text-[#1A4D2E] uppercase tracking-widest flex items-center gap-2">
                       {nextStatus === 'PREPARING' ? (
                         <>Start Cooking <Flame className="h-4 w-4" /></>
+                      ) : nextStatus === 'PAID' ? (
+                        <>Serve Order <CheckCircle className="h-4 w-4" /></>
                       ) : (
                         <>Mark Ready <CheckCircle className="h-4 w-4" /></>
                       )}
@@ -334,7 +336,7 @@ export default function KitchenPage() {
               orders={completedOrders}
               icon={CheckCircle}
               colorClass="bg-gradient-to-r from-green-50 to-transparent"
-              nextStatus={null}
+              nextStatus="PAID"
               emptyText="No orders waiting for pickup"
             />
           </div>

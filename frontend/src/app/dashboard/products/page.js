@@ -92,20 +92,35 @@ export default function ProductsPage() {
   };
 
   const ProductModal = ({ product, onClose, onSave }) => {
-    const [formData, setFormData] = useState(product || {
-      name: '',
-      description: '',
-      price: '',
-      categoryId: '',
-      isAvailable: true,
-      sendToKitchen: false,
-      categoryId: '',
-      isAvailable: true,
-      sendToKitchen: false,
-      tax: '0',
-      imageUrl: '',
-      variants: []
-    });
+    // When editing, clean up the product object:
+    // - Strip DB-only variant fields (id, productId, createdAt, updatedAt)
+    // - Resolve categoryId from nested category object if needed
+    const initialData = product
+      ? {
+          ...product,
+          categoryId: product.categoryId || product.category?.id || '',
+          variants: (product.variants || []).map(v => ({
+            name: v.name,
+            extraPrice: Number(v.extraPrice) || 0
+          }))
+        }
+      : {
+          name: '',
+          description: '',
+          price: '',
+          categoryId: '',
+          isAvailable: true,
+          sendToKitchen: false,
+          tax: '0',
+          imageUrl: '',
+          variants: []
+        };
+
+    const [formData, setFormData] = useState(initialData);
+
+    // Category mode: 'select' = pick existing, 'new' = type new category name
+    const [categoryMode, setCategoryMode] = useState('select');
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     const handleAddVariant = () => {
       setFormData({
@@ -128,7 +143,8 @@ export default function ProductsPage() {
 
     const handleSubmit = async (e) => {
       e.preventDefault();
-      onSave(formData);
+      // Pass newCategoryName alongside formData so handleSaveProduct can create it
+      onSave({ ...formData, _newCategoryName: categoryMode === 'new' ? newCategoryName.trim() : null });
     };
 
     return (
@@ -192,19 +208,63 @@ export default function ProductsPage() {
               </div>
             </div>
 
+            {/* Category Field — select existing OR create new */}
             <div>
-              <label className="block text-sm font-semibold text-coffee-700 mb-2">Category *</label>
-              <select
-                value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                required
-                className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white"
-              >
-                <option value="">Select category</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-semibold text-coffee-700">Category *</label>
+                <div className="flex rounded-xl overflow-hidden border border-coffee-600/20 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryMode('select')}
+                    className={`px-3 py-1 transition ${
+                      categoryMode === 'select'
+                        ? 'bg-[#1A4D2E] text-white'
+                        : 'bg-white text-coffee-700 hover:bg-coffee-50'
+                    }`}
+                  >
+                    Select Existing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryMode('new')}
+                    className={`px-3 py-1 transition ${
+                      categoryMode === 'new'
+                        ? 'bg-[#1A4D2E] text-white'
+                        : 'bg-white text-coffee-700 hover:bg-coffee-50'
+                    }`}
+                  >
+                    + Create New
+                  </button>
+                </div>
+              </div>
+
+              {categoryMode === 'select' ? (
+                <select
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white"
+                >
+                  <option value="">Select a category...</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. Cold Brews, Snacks, Combos..."
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-[#1A4D2E]/40 focus:border-[#1A4D2E] focus:outline-none bg-white"
+                  />
+                  <p className="text-xs text-[#5F6F65] mt-1.5">
+                    ✨ This will create a new category and assign it to the product.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4">
@@ -318,23 +378,48 @@ export default function ProductsPage() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
 
+      // Step 1: If user wants to create a new category, do that first
+      let resolvedCategoryId = formData.categoryId;
+
+      if (formData._newCategoryName) {
+        const catResponse = await fetch(`${API_URL}/products/categories`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name: formData._newCategoryName })
+        });
+
+        if (!catResponse.ok) {
+          const err = await catResponse.json();
+          alert(`Failed to create category: ${err.error || 'Unknown error'}`);
+          return;
+        }
+
+        const newCategory = await catResponse.json();
+        resolvedCategoryId = newCategory.id;
+
+        // Sync the categories list in the UI immediately
+        setCategories(prev => [...prev, newCategory]);
+      }
+
+      // Step 2: Save the product with the resolved categoryId
       const url = editingProduct
         ? `${API_URL}/products/${editingProduct.id}`
         : `${API_URL}/products`;
 
       const method = editingProduct ? 'PUT' : 'POST';
 
-      // Sanitization Payload
       const payload = {
         name: formData.name,
         description: formData.description,
-        price: formData.price, // Zod preprocesses to number
+        price: formData.price,
         tax: formData.tax,
-        categoryId: formData.categoryId,
+        categoryId: resolvedCategoryId,
         isAvailable: formData.isAvailable,
         sendToKitchen: formData.sendToKitchen,
         imageUrl: formData.imageUrl,
-        // Fix for Zod validation error: coerce null to undefined
         unit: formData.unit || undefined,
         variants: formData.variants?.map(v => ({
           name: v.name,

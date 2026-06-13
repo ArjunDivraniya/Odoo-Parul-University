@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Edit2, Package } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Edit2, Package, ChefHat } from "lucide-react";
 import { useCartStore } from "@/stores/cart-store";
 import CustomerModal from "@/components/pos/CustomerModal";
 
@@ -9,6 +9,65 @@ export default function CartPage() {
   const { cart, addItem, decreaseQuantity, removeItem, clearCart, customer, setCustomer } = useCartStore();
   const [selectedTable, setSelectedTable] = useState(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const handleSendToKitchen = async () => {
+    if (cart.length === 0) return;
+    if (!customer || !customer.name || !customer.email || !customer.mobile) {
+      alert("Please add customer details (Name, Email, and Mobile) before sending to kitchen.");
+      setIsCustomerModalOpen(true);
+      return;
+    }
+    setSending(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const session = JSON.parse(localStorage.getItem('activeSession') || '{}');
+
+      if (!session || !session.id) {
+        throw new Error("No active session found. Please start a session first.");
+      }
+
+      // Create Order with status SENT in one go
+      const orderPayload = {
+        sessionId: session.id,
+        tableId: selectedTable?.id || undefined,
+        status: 'SENT',
+        type: selectedTable ? "DINE_IN" : "TAKEAWAY",
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity
+        })),
+        customer: customer || undefined
+      };
+
+      const orderResponse = await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(orderPayload)
+      });
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.text();
+        throw new Error(`Failed to create order: ${errorData || orderResponse.statusText}`);
+      }
+
+      clearCart();
+      localStorage.removeItem('pendingOrder');
+      localStorage.removeItem('pendingCustomer');
+      
+      alert("Order sent to kitchen successfully!");
+      window.location.href = '/pos/tables';
+    } catch (error) {
+      console.error('Send to kitchen error:', error);
+      alert(error.message);
+    } finally {
+      setSending(false);
+    }
+  };
 
   useEffect(() => {
     const tableData = localStorage.getItem('selectedTable');
@@ -240,6 +299,15 @@ export default function CartPage() {
               >
                 <CreditCard className="h-5 w-5" />
                 Proceed to Payment
+              </button>
+
+              <button
+                onClick={handleSendToKitchen}
+                disabled={sending}
+                className="w-full bg-[#F5A623] hover:bg-[#D48A14] disabled:bg-gray-300 text-white py-4 rounded-[2rem] font-bold text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mt-3"
+              >
+                <ChefHat className="h-5 w-5" />
+                {sending ? "Sending..." : "Send to Kitchen"}
               </button>
             </div>
 

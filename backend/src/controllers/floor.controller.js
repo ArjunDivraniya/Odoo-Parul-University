@@ -19,6 +19,22 @@ exports.getFloors = async (req, res) => {
         const floors = await prisma.floor.findMany({
             include: {
                 tables: {
+                    include: {
+                        orders: {
+                            where: {
+                                NOT: {
+                                    status: {
+                                        in: ['PAID', 'CANCELLED']
+                                    }
+                                }
+                            },
+                            select: {
+                                id: true,
+                                status: true,
+                                totalAmount: true
+                            }
+                        }
+                    },
                     orderBy: { name: 'asc' }
                 }
             },

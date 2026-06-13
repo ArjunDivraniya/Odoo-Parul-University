@@ -14,7 +14,7 @@ const productSchema = z.object({
     sendToKitchen: z.boolean().optional(),
     imageUrl: z.string().optional(),
     variants: z.array(z.object({
-        name: z.string(),
+        name: z.string().min(1, 'Variant name cannot be empty'),
         extraPrice: z.preprocess((val) => Number(val), z.number().min(0))
     })).optional()
 });
@@ -64,11 +64,17 @@ exports.createProduct = async (req, res) => {
         const data = productSchema.parse(req.body);
         const { variants, ...productData } = data;
 
+        // Strip any accidental extra fields from variants (e.g. id, productId from frontend)
+        const cleanVariants = variants?.map(v => ({
+            name: v.name,
+            extraPrice: Number(v.extraPrice) || 0
+        }));
+
         const product = await prisma.product.create({
             data: {
                 ...productData,
-                variants: variants ? {
-                    create: variants
+                variants: cleanVariants && cleanVariants.length > 0 ? {
+                    create: cleanVariants
                 } : undefined
             },
             include: { variants: true, category: true }
@@ -76,6 +82,7 @@ exports.createProduct = async (req, res) => {
 
         res.status(201).json(product);
     } catch (error) {
+        console.error('createProduct error:', error);
         res.status(400).json({ error: error.errors || error.message });
     }
 };
@@ -102,20 +109,27 @@ exports.updateProduct = async (req, res) => {
         const data = productSchema.partial().parse(req.body);
         const { variants, ...productData } = data;
 
-        // Transaction to update product and handle variants (simple replacement strategy for variants for now)
+        // Strip extra DB fields from variants (id, productId, createdAt, updatedAt)
+        // These come back from the frontend when editing an existing product
+        const cleanVariants = variants?.map(v => ({
+            name: v.name,
+            extraPrice: Number(v.extraPrice) || 0
+        }));
+
         const product = await prisma.$transaction(async (tx) => {
             await tx.product.update({
                 where: { id },
                 data: productData
             });
 
-            if (variants) {
-                // Delete existing variants and create new ones (simplest approach for full update)
-                // In a real app, you might want to diff them.
+            if (cleanVariants) {
+                // Delete existing variants and recreate with the new list
                 await tx.variant.deleteMany({ where: { productId: id } });
-                await tx.variant.createMany({
-                    data: variants.map(v => ({ ...v, productId: id }))
-                });
+                if (cleanVariants.length > 0) {
+                    await tx.variant.createMany({
+                        data: cleanVariants.map(v => ({ ...v, productId: id }))
+                    });
+                }
             }
 
             return tx.product.findUnique({
@@ -126,6 +140,7 @@ exports.updateProduct = async (req, res) => {
 
         res.json(product);
     } catch (error) {
+        console.error('updateProduct error:', error);
         res.status(400).json({ error: error.errors || error.message });
     }
 };

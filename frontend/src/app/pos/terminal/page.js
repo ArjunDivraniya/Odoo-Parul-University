@@ -5,6 +5,7 @@ import { Search, ShoppingCart, RefreshCw, Power, Coffee, User, Edit2, Plus } fro
 import CustomerModal from "@/components/pos/CustomerModal";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { useCartStore } from "@/stores/cart-store";
+import CartSidebar from "@/components/pos/cart-sidebar";
 
 export default function POSTerminalPage() {
   const [categories, setCategories] = useState([]);
@@ -89,13 +90,14 @@ export default function POSTerminalPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <CustomerModal 
-        isOpen={isCustomerModalOpen}
-        onClose={() => setIsCustomerModalOpen(false)}
-        onSave={setCustomer}
-        initialData={customer}
-      />
+    <div className="flex h-full gap-6 overflow-hidden">
+      <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#1A4D2E]/10 scrollbar-track-transparent">
+        <CustomerModal 
+          isOpen={isCustomerModalOpen}
+          onClose={() => setIsCustomerModalOpen(false)}
+          onSave={setCustomer}
+          initialData={customer}
+        />
 
       {loading ? (
         <div className="flex items-center justify-center h-[60vh]">
@@ -258,9 +260,12 @@ export default function POSTerminalPage() {
           );
         })}
       </div>
+    </>
+  )}
+</div>
 
-        </>
-      )}
+      {/* Cart Sidebar */}
+      {!loading && <CartSidebar />}
 
       {showCloseSessionModal && session && (
         <CloseSessionModal

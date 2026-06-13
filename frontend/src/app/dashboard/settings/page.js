@@ -92,9 +92,18 @@ export default function SettingsPage() {
 
   // Users
   const handleSaveUser = async (userData) => {
-    // Remove empty password to avoid validation error
     const payload = { ...userData };
-    if (!payload.password) delete payload.password;
+
+    if (editingUser) {
+      // When editing, remove empty password to avoid overwriting
+      if (!payload.password) delete payload.password;
+    } else {
+      // When creating, password is required
+      if (!payload.password || payload.password.length < 6) {
+        alert('Password is required (at least 6 characters) when creating a new user.');
+        return;
+      }
+    }
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
     const token = localStorage.getItem('token');
@@ -108,12 +117,18 @@ export default function SettingsPage() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const result = await res.json();
         fetchData();
         setShowUserModal(false);
         setEditingUser(null);
+
+        // Show credentials confirmation for newly created users
+        if (!editingUser) {
+          alert(`✅ User created successfully!\n\nName: ${userData.name}\nEmail: ${userData.email}\nPassword: ${userData.password}\nRole: ${userData.role}\n\nShare these credentials with the employee.`);
+        }
       } else {
         const err = await res.json();
-        alert(err.error);
+        alert(err.error || 'Failed to save user');
       }
     } catch (e) { alert(e.message); }
   };

@@ -46,11 +46,11 @@ export default function RecentOrders({ orders }) {
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-2xl bg-[#F3F1E2] flex items-center justify-center font-semibold text-[#1A4D2E]">
-                        {(order.user?.name || "G")[0]}
+                        {(order.customerName || order.user?.name || "G")[0]}
                       </div>
                       <div>
                         <p className="font-semibold text-[#1A4D2E]">
-                          {order.user?.name || "Guest"}
+                          {order.customerName || order.user?.name || "Walk-in"}
                         </p>
                         <p className="text-xs text-[#5F6F65]">
                           {order.createdAt

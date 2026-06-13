@@ -95,7 +95,7 @@ exports.createOrder = async (req, res) => {
                 userId,
                 type,
                 totalAmount,
-                status: 'DRAFT',
+                status,
                 customerName: customer?.name || null,
                 customerEmail: customer?.email || null,
                 customerMobile: customer?.mobile || null,
@@ -230,6 +230,10 @@ exports.payOrder = async (req, res) => {
             return res.status(400).json({ error: error.errors });
         }
         console.error('Pay order error:', error);
+        res.status(400).json({ error: error.message });
+    }
+};
+onsole.error('Pay order error:', error);
         res.status(400).json({ error: error.message });
     }
 };

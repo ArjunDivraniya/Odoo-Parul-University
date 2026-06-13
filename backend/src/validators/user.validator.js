@@ -6,6 +6,7 @@ const createUserSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   email: z.string().trim().email('Valid email is required'),
   role: userRoleSchema,
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
 });
 
 const updateUserSchema = z

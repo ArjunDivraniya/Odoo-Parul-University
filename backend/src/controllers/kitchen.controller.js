@@ -30,7 +30,7 @@ exports.updateKitchenStatus = async (req, res) => {
         const { status } = req.body; // 'PREPARING' or 'COMPLETED' (Ready to Serve)
 
         // Validate status
-        if (!['PREPARING', 'COMPLETED'].includes(status)) {
+        if (!['PREPARING', 'COMPLETED', 'PAID'].includes(status)) {
             return res.status(400).json({ error: "Invalid kitchen status" });
         }
 

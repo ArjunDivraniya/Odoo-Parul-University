@@ -368,6 +368,9 @@ export default function OrdersPage() {
                     <p className="text-sm text-coffee-600/60 mb-1">Customer</p>
                     <p className="text-lg font-semibold text-coffee-800">{order.customerName}</p>
                     <p className="text-sm text-coffee-600">{order.customerEmail}</p>
+                    {order.customerMobile && (
+                      <p className="text-sm text-coffee-600">{order.customerMobile}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -631,6 +634,7 @@ export default function OrdersPage() {
                 <tr>
                   {[
                     "Order #",
+                    "Customer",
                     "Table",
                     "Status",
                     "Items",
@@ -655,6 +659,9 @@ export default function OrdersPage() {
                         <span className="h-2 w-2 rounded-full bg-[#1A4D2E]" />
                         #{order.orderNumber?.slice(-6) || order.id.slice(0, 6)}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-[#1A4D2E]/80">
+                      {order.customerName || "Walk-in"}
                     </td>
                     <td className="px-6 py-4 text-[#1A4D2E]/80">
                       {order.table?.name || "N/A"}

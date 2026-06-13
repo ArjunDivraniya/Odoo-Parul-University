@@ -95,44 +95,67 @@ export default function TablesPage() {
       ) : (
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {currentFloor?.tables?.map((table) => (
-              <button
-                key={table.id}
-                onClick={() => handleTableSelect(table)}
-                className="group bg-white rounded-[2rem] p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-2 border-[#E8F5E9] hover:border-[#1A4D2E]"
-              >
-                {/* Table Image */}
-                <div className="h-40 w-full rounded-2xl mb-6 overflow-hidden relative">
-                  <img 
-                    src={
-                      table.seats <= 2 
-                        ? 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop&q=80' 
-                        : table.seats <= 4 
-                        ? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop&q=80'
-                        : 'https://images.unsplash.com/photo-1582037928769-181f2644ecb7?w=400&h=300&fit=crop&q=80'
-                    }
-                    alt={`${table.name} - ${table.seats} seats`}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A4D2E]/80 to-transparent group-hover:from-[#1A4D2E]/90 transition-all" />
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                    <span className="text-white font-bold text-lg">{table.name}</span>
-                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                      <Users className="h-4 w-4 text-white inline mr-1" />
-                      <span className="text-white text-sm font-semibold">{table.seats}</span>
+            {currentFloor?.tables?.map((table) => {
+              const activeOrder = table.orders?.[0];
+              const isOccupied = table.orders?.length > 0;
+              
+              return (
+                <button
+                  key={table.id}
+                  onClick={() => handleTableSelect(table)}
+                  className={`group rounded-[2rem] p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-2 ${
+                    isOccupied 
+                      ? 'bg-[#1A4D2E] border-[#1A4D2E] text-white' 
+                      : 'bg-white border-[#E8F5E9] hover:border-[#1A4D2E] text-[#1A4D2E]'
+                  }`}
+                >
+                  {/* Table Image */}
+                  <div className="h-40 w-full rounded-2xl mb-6 overflow-hidden relative">
+                    <img 
+                      src={
+                        table.seats <= 2 
+                          ? 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop&q=80' 
+                          : table.seats <= 4 
+                          ? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop&q=80'
+                          : 'https://images.unsplash.com/photo-1582037928769-181f2644ecb7?w=400&h=300&fit=crop&q=80'
+                      }
+                      alt={`${table.name} - ${table.seats} seats`}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-t transition-all ${
+                      isOccupied ? 'from-black/60' : 'from-[#1A4D2E]/80 group-hover:from-[#1A4D2E]/90'
+                    }`} />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                      <span className="text-white font-bold text-lg">{table.name}</span>
+                      <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                        <Users className="h-4 w-4 text-white inline mr-1" />
+                        <span className="text-white text-sm font-semibold">{table.seats}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Table Info */}
-                <div className="text-center">
-                  {/* Status Badge */}
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-[#E8F5E9] text-[#1A4D2E] shadow-sm">
-                    ✓ Available
-                  </span>
-                </div>
-              </button>
-            ))}
+                  {/* Table Info */}
+                  <div className="text-center space-y-3">
+                    {/* Status Badge */}
+                    <div className="flex flex-col items-center gap-2">
+                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
+                        isOccupied 
+                          ? 'bg-orange-500 text-white' 
+                          : 'bg-[#E8F5E9] text-[#1A4D2E]'
+                      }`}>
+                        {isOccupied ? '● Occupied' : '✓ Available'}
+                      </span>
+                      
+                      {isOccupied && (
+                        <div className="text-xs font-semibold opacity-80">
+                          {activeOrder.status} • ₹{Number(activeOrder.totalAmount).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {(!currentFloor?.tables || currentFloor.tables.length === 0) && (

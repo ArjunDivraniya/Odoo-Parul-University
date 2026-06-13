@@ -78,8 +78,9 @@ async function createUser(actor, payload) {
     throw createError(400, 'Email is already registered');
   }
 
-  const temporaryPassword = generateTemporaryPassword();
-  const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+  // Use admin-provided password if given, otherwise generate a temporary one
+  const plainPassword = data.password || generateTemporaryPassword();
+  const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
   const user = await userRepository.create({
     name: data.name,
@@ -95,14 +96,14 @@ async function createUser(actor, payload) {
     to: user.email,
     name: user.name,
     email: user.email,
-    password: temporaryPassword,
+    password: plainPassword,
     role: user.role,
     shopName: shop?.name || 'your shop',
   });
 
   return {
     user: toPublicUser(user),
-    temporaryPassword: process.env.NODE_ENV === 'production' ? undefined : temporaryPassword,
+    temporaryPassword: process.env.NODE_ENV === 'production' ? undefined : plainPassword,
   };
 }
 
