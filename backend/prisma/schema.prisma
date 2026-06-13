@@ -1,0 +1,255 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  EMPLOYEE
+  KITCHEN
+}
+
+enum OrderStatus {
+  DRAFT
+  SENT
+  PREPARING
+  COMPLETED
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  DIGITAL
+  UPI
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum SessionStatus {
+  OPEN
+  CLOSED
+}
+
+// Models
+
+model Shop {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  adminId   String   @unique
+  admin     User     @relation("ShopAdmin", fields: [adminId], references: [id], onDelete: Restrict)
+  users     User[]   @relation("ShopUsers")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id          String    @id @default(uuid())
+  name        String
+  email       String    @unique
+  password    String
+  role        Role      @default(EMPLOYEE)
+  shopId      String?
+  shop        Shop?     @relation("ShopUsers", fields: [shopId], references: [id], onDelete: Cascade)
+  managedShop Shop?     @relation("ShopAdmin")
+  isActive    Boolean   @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([shopId])
+
+  sessions  Session[]
+  orders    Order[]
+}
+
+model Terminal {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., "POS-01"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+}
+
+model Session {
+  id           String        @id @default(uuid())
+  terminalId   String
+  terminal     Terminal      @relation(fields: [terminalId], references: [id])
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  
+  startAt      DateTime      @default(now())
+  endAt        DateTime?
+  status       SessionStatus @default(OPEN)
+  openingCash  Decimal       @default(0) @db.Decimal(10, 2)
+  closingCash  Decimal?      @db.Decimal(10, 2)
+  
+  orders       Order[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Partial index: Only one OPEN session per terminal
+  // @@unique([terminalId], name: "active_session_per_terminal", map: "active_session_per_terminal_idx") 
+}
+
+model Floor {
+  id        String   @id @default(uuid())
+  name      String
+  tables    Table[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Table {
+  id        String   @id @default(uuid())
+  name      String
+  seats     Int
+  active    Boolean  @default(true)
+  floorId   String
+  floor     Floor    @relation(fields: [floorId], references: [id])
+  orders    Order[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  name          String
+  description   String?
+  price         Decimal     @db.Decimal(10, 2)
+  unit          String?     // e.g. "Item", "kg", "L"
+  tax           Decimal     @default(0) @db.Decimal(5, 2)
+  isAvailable   Boolean     @default(true)
+  sendToKitchen Boolean     @default(false)
+  imageUrl      String?
+  
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  variants      Variant[]
+  orderItems    OrderItem[] // Relation for integrity
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Variant {
+  id         String   @id @default(uuid())
+  name       String
+  extraPrice Decimal  @default(0) @db.Decimal(10, 2)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  orderItems OrderItem[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique // #ORD-YYYYMMDD-XXXX
+  
+  status      OrderStatus @default(DRAFT)
+  type        String      @default("DINE_IN") // DINE_IN, TAKEAWAY
+  version     Int         @default(1) // Optimistic Concurrency
+  
+  sessionId   String?
+  session     Session?    @relation(fields: [sessionId], references: [id])
+  
+  tableId     String?
+  table       Table?      @relation(fields: [tableId], references: [id])
+  
+  userId      String?     // Staff who created/managed
+  user        User?       @relation(fields: [userId], references: [id])
+
+  // Customer Details
+  customerName   String?
+  customerEmail  String?
+  customerMobile String?
+
+  items       OrderItem[]
+  payments    Payment[]
+  
+  totalAmount Decimal     @default(0) @db.Decimal(10, 2)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model OrderItem {
+  id             String  @id @default(uuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id])
+  
+  productId      String
+  product        Product @relation(fields: [productId], references: [id])
+  
+  // Snapshots
+  productName    String
+  price          Decimal @db.Decimal(10, 2)
+  variantName    String?
+  
+  // Normalized Relation
+  variantId      String?
+  variant        Variant? @relation(fields: [variantId], references: [id])
+  
+  quantity       Int
+  status         String  @default("PENDING") // PENDING, PREPARING, READY
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id])
+  
+  method        PaymentMethod
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  reference     String?       // Transaction ID / UPI Ref
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  
+  // General
+  cafeName      String   @default("Odoo Cafe")
+  receiptFooter String   @default("Thank you for your visit!")
+  currency      String   @default("₹")
+
+  // Payment Toggles
+  cashEnabled    Boolean @default(true)
+  digitalEnabled Boolean @default(true)
+  upiEnabled     Boolean @default(true)
+  
+  // Configuration
+  upiId          String? // e.g. "123@ybl"
+  
+  updatedAt      DateTime @updatedAt
+}

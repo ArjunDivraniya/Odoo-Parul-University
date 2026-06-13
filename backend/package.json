@@ -1,0 +1,37 @@
+{
+  "name": "odoo-cafe-pos-server",
+  "version": "1.0.0",
+  "description": "Backend API server for Odoo Cafe POS System",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx prisma generate && node server.js",
+    "dev": "npx prisma generate && nodemon server.js",
+    "seed": "npx prisma generate && node prisma/seed.js",
+    "db:push": "npx prisma db push",
+    "db:migrate": "npx prisma migrate dev",
+    "db:studio": "npx prisma studio"
+  },
+  "keywords": ["pos", "cafe", "restaurant", "point-of-sale"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^5.10.2",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^7.0.12",
+    "prisma": "^5.10.2",
+    "socket.io": "^4.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
