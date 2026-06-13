@@ -2,9 +2,11 @@ const prisma = require('../lib/prisma');
 
 exports.getStats = async (req, res) => {
   try {
+    const shopId = req.user.shopId;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+<<<<<<< HEAD
     const [
       totalRevenue,
       todayRevenue,
@@ -60,18 +62,44 @@ exports.getStats = async (req, res) => {
       prisma.table.count({
         where: { status: 'AVAILABLE' }
       })
+=======
+    const whereClause = {
+      status: { in: ['PAID', 'COMPLETED'] },
+      user: shopId ? { shopId } : undefined
+    };
+
+    // parallelize queries for performance
+    const [totalRevenue, totalOrders, totalUsers, todayRevenue] = await Promise.all([
+        prisma.order.aggregate({
+            _sum: { totalAmount: true },
+            where: whereClause
+        }),
+        prisma.order.count({ where: whereClause }),
+        prisma.user.count({ where: { role: 'EMPLOYEE', shopId: shopId || undefined } }),
+        prisma.order.aggregate({
+            _sum: { totalAmount: true },
+            where: { 
+                ...whereClause,
+                createdAt: { gte: today }
+            }
+        })
+>>>>>>> e229bde4f9c02fb112533b24dd14c4c628fe4d29
     ]);
 
     res.json({
-      totalRevenue: totalRevenue._sum.totalAmount || 0,
-      todayRevenue: todayRevenue._sum.totalAmount || 0,
+      totalRevenue: Number(totalRevenue._sum.totalAmount) || 0,
+      todayRevenue: Number(todayRevenue._sum.totalAmount) || 0,
       totalOrders,
+<<<<<<< HEAD
       ordersToday,
       pendingOrders,
       preparingOrders,
       completedOrders,
       occupiedTables,
       availableTables
+=======
+      totalUsers
+>>>>>>> e229bde4f9c02fb112533b24dd14c4c628fe4d29
     });
   } catch (error) {
     console.error(error);
@@ -81,7 +109,11 @@ exports.getStats = async (req, res) => {
 
 exports.getRecentOrders = async (req, res) => {
   try {
+    const shopId = req.user.shopId;
     const recentOrders = await prisma.order.findMany({
+      where: {
+        user: shopId ? { shopId } : undefined
+      },
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -99,35 +131,40 @@ exports.getRecentOrders = async (req, res) => {
 exports.getSalesChart = async (req, res) => {
     // Return last 7 days sales
     try {
+        const shopId = req.user.shopId;
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
-        // Optimized: Group by DAY using raw query to reduce bandwidth
-        // Instead of returning entry per second/millisecond
-        const sales = await prisma.$queryRaw`
-            SELECT 
-                DATE(createdAt) as date, 
-                SUM(totalAmount) as total 
-            FROM "Order" 
-            WHERE 
-                createdAt >= ${sevenDaysAgo} 
-                AND status IN ('PAID', 'COMPLETED')
-            GROUP BY DATE(createdAt)
-            ORDER BY date ASC
-        `;
+        // For raw queries, multi-tenancy is trickier if we don't have shopId on Order.
+        // Let's use Prisma findMany and aggregate in JS for safety or complex join.
+        // Given shopId is on User, we need to join.
         
-        // Transform for frontend if needed (BigInt handling)
-        // Prisma raw query returns BigInd for sums sometimes in Postgres, check it.
-        // Assuming totalAmount is Decimal, it returns number or string. Or Date object.
-        // Serialization of BigInt might fail in express.json().
-        
-        const serializedSales = sales.map(s => ({
-            date: s.date, // Date object
-            total: Number(s.total) // Ensure number
-        }));
+        const orders = await prisma.order.findMany({
+            where: {
+                createdAt: { gte: sevenDaysAgo },
+                status: { in: ['PAID', 'COMPLETED'] },
+                user: shopId ? { shopId } : undefined
+            },
+            select: {
+                createdAt: true,
+                totalAmount: true
+            }
+        });
 
-        res.json(serializedSales);
+        // Group by date in JS
+        const grouped = orders.reduce((acc, order) => {
+            const date = order.createdAt.toISOString().split('T')[0];
+            acc[date] = (acc[date] || 0) + Number(order.totalAmount);
+            return acc;
+        }, {});
+
+        const result = Object.entries(grouped).map(([date, total]) => ({
+            date,
+            total
+        })).sort((a, b) => a.date.localeCompare(b.date));
+
+        res.json(result);
     } catch(err) {
         console.error("Chart Error:", err);
         res.status(500).json({ error: "Failed to fetch chart data" });
@@ -137,6 +174,7 @@ exports.getSalesChart = async (req, res) => {
 // Get sales trends for line chart (by category and time range)
 exports.getSalesTrends = async (req, res) => {
   try {
+    const shopId = req.user.shopId;
     const { range = 'day' } = req.query;
     const now = new Date();
     let startDate = new Date();
@@ -160,15 +198,18 @@ exports.getSalesTrends = async (req, res) => {
       groupBy = 'month';
     }
 
+    const whereClause = {
+      order: {
+        createdAt: { gte: startDate },
+        status: { in: ['PAID', 'COMPLETED'] },
+        user: shopId ? { shopId } : undefined
+      }
+    };
+
     // First, get top 3 categories by revenue to focus the chart
     const topCategories = await prisma.orderItem.groupBy({
       by: ['productId'],
-      where: {
-        order: {
-          createdAt: { gte: startDate },
-          status: { in: ['PAID', 'COMPLETED'] }
-        }
-      },
+      where: whereClause,
       _sum: {
         quantity: true
       }
@@ -207,7 +248,8 @@ exports.getSalesTrends = async (req, res) => {
     const orders = await prisma.order.findMany({
       where: {
         createdAt: { gte: startDate },
-        status: { in: ['PAID', 'COMPLETED'] }
+        status: { in: ['PAID', 'COMPLETED'] },
+        user: shopId ? { shopId } : undefined
       },
       include: {
         items: {
@@ -277,8 +319,15 @@ exports.getSalesTrends = async (req, res) => {
 // Get top products for radar chart
 exports.getTopProducts = async (req, res) => {
   try {
+    const shopId = req.user.shopId;
     const topProducts = await prisma.orderItem.groupBy({
       by: ['productId'],
+      where: {
+        order: {
+          status: { in: ['PAID', 'COMPLETED'] },
+          user: shopId ? { shopId } : undefined
+        }
+      },
       _sum: {
         quantity: true
       },
@@ -320,6 +369,7 @@ exports.getTopProducts = async (req, res) => {
 // Get heatmap data (orders by day and time slot)
 exports.getHeatmapData = async (req, res) => {
   try {
+    const shopId = req.user.shopId;
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -327,7 +377,8 @@ exports.getHeatmapData = async (req, res) => {
     const orders = await prisma.order.findMany({
       where: {
         createdAt: { gte: sevenDaysAgo },
-        status: { in: ['PAID', 'COMPLETED'] }
+        status: { in: ['PAID', 'COMPLETED'] },
+        user: shopId ? { shopId } : undefined
       },
       select: {
         createdAt: true
@@ -382,5 +433,64 @@ exports.getHeatmapData = async (req, res) => {
   } catch (error) {
     console.error('Heatmap error:', error);
     res.status(500).json({ error: 'Failed to fetch heatmap data' });
+  }
+};
+
+// Get employee sales performance
+exports.getEmployeePerformance = async (req, res) => {
+  try {
+    const shopId = req.user.shopId;
+    const { range = 'week' } = req.query;
+    const now = new Date();
+    let startDate = new Date();
+    
+    if (range === 'day') {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (range === 'week') {
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (range === 'month') {
+      startDate.setDate(now.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    const performance = await prisma.order.groupBy({
+      by: ['userId'],
+      where: {
+        createdAt: { gte: startDate },
+        status: { in: ['PAID', 'COMPLETED'] },
+        userId: { not: null },
+        user: shopId ? { shopId } : undefined
+      },
+      _sum: {
+        totalAmount: true
+      },
+      _count: {
+        id: true
+      }
+    });
+
+    // Get user details
+    const userIds = performance.map(p => p.userId);
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true }
+    });
+
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.id] = u.name;
+    });
+
+    const result = performance.map(p => ({
+      name: userMap[p.userId] || 'Unknown',
+      sales: Number(p._sum.totalAmount) || 0,
+      orders: p._count.id || 0
+    })).sort((a, b) => b.sales - a.sales);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Employee performance error:', error);
+    res.status(500).json({ error: 'Failed to fetch employee performance' });
   }
 };

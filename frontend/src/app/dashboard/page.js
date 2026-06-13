@@ -25,7 +25,8 @@ import {
 import { getSocket } from "@/lib/socket";
 
 import { LineChart } from "@mui/x-charts/LineChart";
-import { RadarChart } from "@mui/x-charts/RadarChart";
+import { BarChart } from "@mui/x-charts/BarChart";
+import { PieChart } from "@mui/x-charts/PieChart";
 
 /* ✅ Nivo Heatmap must be imported dynamically */
 const ResponsiveHeatMap = dynamic(
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [heatmapData, setHeatmapData] = useState([]);
+  const [employeePerformance, setEmployeePerformance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
   const [activeRange, setActiveRange] = useState("day");
@@ -122,10 +124,11 @@ export default function DashboardPage() {
 
         const headers = { Authorization: `Bearer ${token}` };
 
-        const [trendsRes, productsRes, heatmapRes] = await Promise.all([
+        const [trendsRes, productsRes, heatmapRes, employeeRes] = await Promise.all([
           fetch(`${API_URL}/dashboard/sales-trends?range=${activeRange}`, { headers }),
           fetch(`${API_URL}/dashboard/top-products`, { headers }),
           fetch(`${API_URL}/dashboard/heatmap-data`, { headers }),
+          fetch(`${API_URL}/dashboard/employee-performance?range=${activeRange}`, { headers }),
         ]);
 
         if (trendsRes.ok) {
@@ -142,6 +145,11 @@ export default function DashboardPage() {
         if (heatmapRes.ok) {
           const heatmapResult = await heatmapRes.json();
           setHeatmapData(heatmapResult);
+        }
+
+        if (employeeRes.ok) {
+          const employeeData = await employeeRes.json();
+          setEmployeePerformance(employeeData);
         }
       } catch (error) {
         console.error("Failed to fetch chart data", error);
@@ -290,10 +298,11 @@ export default function DashboardPage() {
         {/* Charts */}
         <div className="xl:col-span-2 space-y-6">
           {/* Line Chart */}
-          <div className="rounded-3xl bg-white p-6 shadow-lg">
-            <h3 className="font-bold text-[#1A4D2E] mb-4">
-              Beverage Performance
-            </h3>
+          <div className="rounded-3xl bg-white p-6 shadow-lg border border-[#F1EEDB]">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-[#1A4D2E]">Revenue by Category</h3>
+              <TrendingUp className="h-5 w-5 text-[#1A4D2E]/40" />
+            </div>
 
             {chartsLoading ? (
               <div className="flex items-center justify-center h-[280px]">
@@ -313,7 +322,8 @@ export default function DashboardPage() {
                         return {
                           data: chartData.map((d) => d[key] || 0),
                           label: cat,
-                          color: colors[idx % colors.length]
+                          color: colors[idx % colors.length],
+                          curve: "linear",
                         };
                       })
                     : [
@@ -322,44 +332,83 @@ export default function DashboardPage() {
                         { data: chartData.map((d) => d.desserts || 0), label: "Desserts", color: "#4ADE80" },
                       ]
                 }
+                margin={{ left: 60, right: 20, top: 40, bottom: 40 }}
               />
             ) : (
-              <div className="flex items-center justify-center h-[280px] text-gray-400">
-                <p>No data available</p>
+              <div className="flex flex-col items-center justify-center h-[280px] text-gray-400 bg-[#FDFCF7] rounded-2xl border-2 border-dashed border-[#F1EEDB]">
+                <p>No historical data available</p>
               </div>
             )}
           </div>
 
-          {/* Radar Chart */}
-          <div className="rounded-3xl bg-white p-6 shadow-lg">
-            <h3 className="font-bold text-[#1A4D2E] mb-4">
-              Top Products Performance
-            </h3>
+          {/* Top Selling Products List */}
+          <div className="rounded-[32px] bg-white p-8 shadow-lg border border-[#F1EEDB]">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-2xl font-bold text-[#1A4D2E]">Top Selling Products</h3>
+                <p className="text-gray-500 text-sm mt-1">Your most popular items by volume.</p>
+              </div>
+              <Sparkles className="h-6 w-6 text-[#1A4D2E]" />
+            </div>
 
-            {chartsLoading ? (
-              <div className="flex items-center justify-center h-[280px]">
-                <CoffeeLoader size="sm" text="" />
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                {chartsLoading ? (
+                   Array(5).fill(0).map((_, i) => (
+                    <div key={i} className="h-16 w-full bg-gray-50 animate-pulse rounded-2xl" />
+                   ))
+                ) : radarData.length > 0 ? (
+                  radarData.map((product, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-[#FDFCF7] border border-[#F1EEDB] hover:border-[#1A4D2E]/20 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-white border border-[#F1EEDB] flex items-center justify-center font-bold text-[#1A4D2E] shadow-sm group-hover:bg-[#1A4D2E] group-hover:text-white transition-colors">
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <p className="font-bold text-[#1A4D2E]">{product.item}</p>
+                          <p className="text-xs text-gray-500">{product.orders} total sales</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[#1A4D2E]" 
+                            style={{ width: `${(product.orders / radarData[0].orders) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center py-10 text-gray-400 italic">No product data yet</p>
+                )}
               </div>
-            ) : radarData.length > 0 ? (
-              <RadarChart
-                height={280}
-                radar={{
-                  metrics: radarData.map((d) => d.item),
-                }}
-                series={[
-                  {
-                    data: radarData.map((d) => d.orders),
-                    label: "Orders",
-                    area: true,
-                    color: "#1A4D2E",
-                  },
-                ]}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-[280px] text-gray-400">
-                <p>No data available</p>
+
+              <div className="flex items-center justify-center">
+                {chartsLoading ? (
+                  <CoffeeLoader size="sm" />
+                ) : radarData.length > 0 ? (
+                  <PieChart
+                    series={[
+                      {
+                        data: radarData.map((d, i) => ({
+                          id: i,
+                          value: d.orders,
+                          label: d.item,
+                          color: ['#1A4D2E', '#2F7A46', '#4ADE80', '#F4A460', '#FDBA74', '#8C8775'][i % 6]
+                        })),
+                        innerRadius: 60,
+                        outerRadius: 100,
+                        paddingAngle: 5,
+                        cornerRadius: 8,
+                      },
+                    ]}
+                    height={250}
+                    legend={{ hidden: true }}
+                  />
+                ) : null}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -416,6 +465,53 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ✅ EMPLOYEE PERFORMANCE */}
+      <section className="grid grid-cols-1 gap-6">
+        <div className="rounded-[32px] bg-white p-8 shadow-lg border border-[#F1EEDB]">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-2xl font-bold text-[#1A4D2E]">Employee Sales Performance</h3>
+              <p className="text-gray-500 text-sm mt-1">Real-time revenue contribution by your barista team.</p>
+            </div>
+            <div className="h-12 w-12 rounded-2xl bg-[#FDFBF4] flex items-center justify-center text-[#1A4D2E]">
+              <Users className="h-6 w-6" />
+            </div>
+          </div>
+
+          {chartsLoading ? (
+            <div className="flex items-center justify-center h-[350px]">
+              <CoffeeLoader size="md" text="Calculating performance..." />
+            </div>
+          ) : employeePerformance.length > 0 ? (
+            <BarChart
+              height={350}
+              xAxis={[
+                {
+                  scaleType: "band",
+                  data: employeePerformance.map((d) => d.name),
+                  label: "Barista Name",
+                },
+              ]}
+              series={[
+                {
+                  data: employeePerformance.map((d) => d.sales),
+                  label: "Total Sales (₹)",
+                  color: "#1A4D2E",
+                  valueFormatter: (value) => `₹${value.toLocaleString()}`,
+                },
+              ]}
+              borderRadius={12}
+              margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[300px] text-gray-400 bg-[#FDFCF7] rounded-3xl border-2 border-dashed border-[#F1EEDB]">
+              <ShoppingBag className="h-10 w-10 mb-3 opacity-20" />
+              <p className="font-medium">No sales data recorded for this period</p>
+            </div>
+          )}
         </div>
       </section>
 
