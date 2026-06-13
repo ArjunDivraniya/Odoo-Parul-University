@@ -65,16 +65,14 @@ export default function KitchenPage() {
     const socket = getSocket();
     socket.emit('join', 'kitchen');
 
-    socket.on('order:created', (newOrder) => {
+    socket.on('order_sent_to_kitchen', (newOrder) => {
       console.log('📶 New order received via socket in KDS:', newOrder);
       setOrders(prevOrders => {
-        // Prevent duplicate entries
         if (prevOrders.some(o => o.id === newOrder.id)) return prevOrders;
         return [...prevOrders, newOrder];
       });
-      showToastNotification(`🔔 New Order #${newOrder.orderNumber?.slice(-3) || 'POS'} created for ${newOrder.table ? newOrder.table.name : 'Takeaway'}!`);
+      showToastNotification(`🔔 New Order #${newOrder.orderNumber?.slice(-3) || 'POS'} sent to kitchen for ${newOrder.table ? newOrder.table.name : 'Takeaway'}!`);
       
-      // Attempt sound alert (fallback if blocked)
       try {
         const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-120.wav");
         audio.volume = 0.5;
@@ -82,23 +80,29 @@ export default function KitchenPage() {
       } catch(e){}
     });
 
-    socket.on('order:status_updated', (updatedOrder) => {
-      console.log('📶 Order status updated via socket in KDS:', updatedOrder);
-      setOrders(prevOrders => {
-        if (['PAID', 'CANCELLED'].includes(updatedOrder.status)) {
-          // Remove from KDS if paid or cancelled
-          return prevOrders.filter(o => o.id !== updatedOrder.id);
-        }
-        return prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o);
-      });
+    const handleUpdate = (updatedOrder) => {
+      console.log('📶 Kitchen status update via socket:', updatedOrder);
+      setOrders(prevOrders => 
+        prevOrders.map(o => o.id === updatedOrder.id ? { ...o, status: updatedOrder.status } : o)
+      );
+    };
+
+    socket.on('kitchen_preparing', handleUpdate);
+    socket.on('kitchen_completed', handleUpdate);
+
+    socket.on('table_released', (data) => {
+      console.log('📶 Table released via socket, removing order:', data);
+      setOrders(prevOrders => prevOrders.filter(o => o.id !== data.orderId));
     });
 
     // Fallback polling every 30 seconds
     const interval = setInterval(fetchOrders, 30000);
 
     return () => {
-      socket.off('order:created');
-      socket.off('order:status_updated');
+      socket.off('order_sent_to_kitchen');
+      socket.off('kitchen_preparing');
+      socket.off('kitchen_completed');
+      socket.off('table_released');
       clearInterval(interval);
     };
   }, []);
@@ -155,7 +159,7 @@ export default function KitchenPage() {
   };
 
   // Filter columns based on order status
-  const toCookOrders = orders.filter(o => o.status === 'SENT');
+  const toCookOrders = orders.filter(o => o.status === 'TO_COOK');
   const preparingOrders = orders.filter(o => o.status === 'PREPARING');
   const completedOrders = orders.filter(o => o.status === 'COMPLETED');
 
@@ -254,8 +258,10 @@ export default function KitchenPage() {
                     <span className="text-xs font-bold text-[#1A4D2E] uppercase tracking-widest flex items-center gap-2">
                       {nextStatus === 'PREPARING' ? (
                         <>Start Cooking <Flame className="h-4 w-4" /></>
-                      ) : (
+                      ) : nextStatus === 'COMPLETED' ? (
                         <>Mark Ready <CheckCircle className="h-4 w-4" /></>
+                      ) : (
+                        <>Mark Served <Utensils className="h-4 w-4" /></>
                       )}
                     </span>
                   </div>
@@ -371,7 +377,7 @@ export default function KitchenPage() {
             activeOrders={completedOrders}
             icon={CheckCircle}
             colorClass="bg-gradient-to-r from-green-50 to-transparent"
-            nextStatus={null}
+            nextStatus="SERVED"
             emptyText="No orders waiting for pickup"
           />
         </div>

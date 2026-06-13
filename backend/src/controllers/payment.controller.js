@@ -2,6 +2,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const emailService = require('../services/email.service');
+const whatsappService = require('../services/whatsapp.service');
 const { getIo } = require('../lib/socket');
 
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_mockkey123';
@@ -22,6 +23,14 @@ exports.createRazorpayOrder = async (req, res) => {
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
+
+    if (order.paymentStatus === 'PAID') {
+      return res.status(400).json({ 
+        error: "ALREADY_PAID", 
+        message: "This order is already paid." 
+      });
+    }
+
 
     const amountInPaise = Math.round(Number(order.totalAmount) * 100);
 
@@ -66,6 +75,14 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Enforce that payment can only happen when not already paid
+    if (order.paymentStatus === 'PAID') {
+      return res.status(400).json({ 
+        error: "ALREADY_PAID", 
+        message: "This order is already paid." 
+      });
     }
 
     let isValid = false;
@@ -119,36 +136,58 @@ exports.verifyRazorpayPayment = async (req, res) => {
     // Mark Order as PAID
     const updatedOrder = await prisma.order.update({
       where: { id: order.id },
-      data: { status: 'PAID' },
+      data: { 
+        status: 'PAID',
+        paymentStatus: 'PAID'
+      },
       include: {
         items: true,
         table: true
       }
     });
 
-    // Release Table
+    // Create Kitchen Ticket
+    const kitchenTicket = await prisma.kitchenTicket.create({
+      data: {
+        orderId: order.id,
+        status: 'TO_COOK'
+      }
+    });
+
+    // Update Table to OCCUPIED
     if (order.tableId) {
       await prisma.table.update({
         where: { id: order.tableId },
-        data: { status: 'AVAILABLE' }
+        data: { status: 'OCCUPIED' }
       });
 
       // Emit Table Sockets
       const io = getIo();
       if (io) {
-        io.emit('table:status_updated', { tableId: order.tableId, status: 'AVAILABLE' });
+        io.emit('table_status_changed', { tableId: order.tableId, status: 'OCCUPIED' });
       }
     }
 
-    // Emit Order Status Socket to Cashier and KDS
+    // Emit Order, Payment, and Kitchen Sockets
     const io = getIo();
     if (io) {
-      io.emit('order:status_updated', updatedOrder);
+      io.emit('payment_completed', { order: updatedOrder, payment });
+      io.emit('order_sent_to_kitchen', { ...updatedOrder, kitchenTicket });
+      io.emit('dashboard_updated');
     }
 
     // Send Email Receipt (fire-and-forget)
     if (updatedOrder.customerEmail) {
       emailService.sendBill(updatedOrder).catch(err => console.error("Email failed:", err));
+    }
+
+    // Send WhatsApp Receipt (fire-and-forget)
+    if (updatedOrder.customerMobile) {
+      const message = `Hello ${updatedOrder.customerName || 'Guest'},\n\nPayment successful for Order #${updatedOrder.orderNumber}.\n\nYour order has been sent to the kitchen.`;
+
+      whatsappService.sendReceipt(updatedOrder.customerMobile, message).catch(err => {
+        console.warn("Auto background WhatsApp failed:", err.message);
+      });
     }
 
     res.json({ success: true, payment });
@@ -158,7 +197,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
   }
 };
 
-const whatsappService = require('../services/whatsapp.service');
 
 exports.sendWhatsAppReceipt = async (req, res) => {
   try {

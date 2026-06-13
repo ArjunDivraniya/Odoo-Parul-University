@@ -17,7 +17,12 @@ import {
   Sparkles,
   Search,
   Bell,
+  Clock,
+  ChefHat,
+  CheckCircle,
+  Coffee,
 } from "lucide-react";
+import { getSocket } from "@/lib/socket";
 
 import { LineChart } from "@mui/x-charts/LineChart";
 import { RadarChart } from "@mui/x-charts/RadarChart";
@@ -38,6 +43,39 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
   const [activeRange, setActiveRange] = useState("day");
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  /* ✅ Socket Listener for Real-Time Updates */
+  useEffect(() => {
+    const socket = getSocket();
+    socket.emit('join', 'admin');
+
+    const handleSocketUpdate = (data) => {
+      console.log("📶 Real-time dashboard update received:", data);
+      setRefreshKey((prev) => prev + 1);
+    };
+
+    socket.on('order_created', handleSocketUpdate);
+    socket.on('payment_completed', handleSocketUpdate);
+    socket.on('order_sent_to_kitchen', handleSocketUpdate);
+    socket.on('kitchen_preparing', handleSocketUpdate);
+    socket.on('kitchen_completed', handleSocketUpdate);
+    socket.on('table_released', handleSocketUpdate);
+    socket.on('table_status_changed', handleSocketUpdate);
+    socket.on('dashboard_updated', handleSocketUpdate);
+
+    return () => {
+      socket.off('order_created', handleSocketUpdate);
+      socket.off('payment_completed', handleSocketUpdate);
+      socket.off('order_sent_to_kitchen', handleSocketUpdate);
+      socket.off('kitchen_preparing', handleSocketUpdate);
+      socket.off('kitchen_completed', handleSocketUpdate);
+      socket.off('table_released', handleSocketUpdate);
+      socket.off('table_status_changed', handleSocketUpdate);
+      socket.off('dashboard_updated', handleSocketUpdate);
+    };
+  }, []);
 
   /* ✅ Fetch Dashboard Data */
   const { token } = useAuthStore();
@@ -72,7 +110,7 @@ export default function DashboardPage() {
     };
 
     if (token) fetchData();
-  }, [token]);
+  }, [token, refreshKey]);
 
   /* ✅ Fetch Chart Data Based on Active Range */
   useEffect(() => {
@@ -113,7 +151,7 @@ export default function DashboardPage() {
     };
 
     if (token) fetchChartData();
-  }, [activeRange, token]);
+  }, [activeRange, token, refreshKey]);
 
   /* ✅ Timeframes */
   const timeframeOptions = [
@@ -236,11 +274,15 @@ export default function DashboardPage() {
       </section>
 
       {/* ✅ STATS */}
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard title="Total Revenue" value={`₹${stats?.totalRevenue || 0}`} icon={DollarSign} />
         <StatsCard title="Today's Revenue" value={`₹${stats?.todayRevenue || 0}`} icon={TrendingUp} />
-        <StatsCard title="Orders" value={stats?.totalOrders || 0} icon={ShoppingBag} />
-        <StatsCard title="Users" value={stats?.totalUsers || 0} icon={Users} />
+        <StatsCard title="Orders Today" value={stats?.ordersToday || 0} icon={ShoppingBag} />
+        <StatsCard title="Pending Orders" value={stats?.pendingOrders || 0} icon={Clock} />
+        <StatsCard title="Preparing Orders" value={stats?.preparingOrders || 0} icon={ChefHat} />
+        <StatsCard title="Completed Orders" value={stats?.completedOrders || 0} icon={CheckCircle} />
+        <StatsCard title="Occupied Tables" value={stats?.occupiedTables || 0} icon={Users} />
+        <StatsCard title="Available Tables" value={stats?.availableTables || 0} icon={Coffee} />
       </section>
 
       {/* ✅ CHARTS GRID */}

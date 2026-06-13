@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { useCartStore } from "@/stores/cart-store";
 import { getSocket } from "@/lib/socket";
+import { useAuthStore } from "@/stores/auth-store";
 
 export default function TablesPage() {
   const router = useRouter();
@@ -24,6 +25,11 @@ export default function TablesPage() {
   // Notifications
   const [notifications, setNotifications] = useState([]);
 
+  // Free Table State
+  const { user } = useAuthStore();
+  const [tableToFree, setTableToFree] = useState(null);
+  const canFreeTable = user && ['ADMIN', 'EMPLOYEE'].includes(user.role);
+
   useEffect(() => {
     fetchFloors();
 
@@ -31,7 +37,7 @@ export default function TablesPage() {
     const socket = getSocket();
     socket.emit('join', 'cashier');
 
-    socket.on('table:status_updated', (data) => {
+    socket.on('table_status_changed', (data) => {
       console.log('📶 Table status updated via socket:', data);
       setFloors(prevFloors => 
         prevFloors.map(floor => ({
@@ -43,18 +49,17 @@ export default function TablesPage() {
       );
     });
 
-    socket.on('order:status_updated', (order) => {
-      console.log('📶 Order status updated via socket:', order);
-      if (order.status === 'COMPLETED' && order.table) {
+    socket.on('kitchen_completed', (order) => {
+      console.log('📶 Kitchen completed via socket:', order);
+      if (order.table) {
         showToastNotification(`🔔 Order #${order.orderNumber?.slice(-3) || 'POS'} is READY for ${order.table.name}!`);
-        // Refresh floors/tables to fetch updated status if needed
         fetchFloors();
       }
     });
 
     return () => {
-      socket.off('table:status_updated');
-      socket.off('order:status_updated');
+      socket.off('table_status_changed');
+      socket.off('kitchen_completed');
     };
   }, []);
 
@@ -201,6 +206,56 @@ export default function TablesPage() {
     }
   };
 
+  const handleFreeTableConfirm = (table) => {
+    setTableToFree(table);
+  };
+
+  const handleFreeTable = async () => {
+    if (!tableToFree) return;
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${API_URL}/tables/${tableToFree.id}/free`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        showToastNotification("Table has been freed successfully.");
+        
+        // Close table session in frontend if currently selected
+        const tableData = localStorage.getItem('selectedTable');
+        if (tableData) {
+          const selected = JSON.parse(tableData);
+          if (selected.id === tableToFree.id) {
+            localStorage.removeItem('selectedTable');
+            localStorage.removeItem('payingOrderId');
+            clearCart();
+          }
+        }
+
+        fetchFloors();
+      } else {
+        const err = await response.json();
+        if (err.error === 'UNPAID_ACTIVE_ORDER') {
+          alert("Please complete or cancel the active order before freeing the table.");
+        } else {
+          alert(err.message || err.error || "Failed to free table");
+        }
+      }
+    } catch (error) {
+      console.error('Failed to free table:', error);
+      alert('Error freeing table');
+    } finally {
+      setTableToFree(null);
+    }
+  };
+
   const currentFloor = floors.find(f => f.id === selectedFloor);
 
   // Helpers for table styling
@@ -317,21 +372,32 @@ export default function TablesPage() {
                     </span>
                   </div>
 
-                  {/* Manual Reservation Button */}
+                  {/* Manual Reservation / Free Table Button */}
                   <div className="flex justify-between items-center mt-6">
-                    <button
-                      onClick={(e) => toggleReservation(e, table)}
-                      className={`text-xs font-bold px-4 py-2 rounded-xl border-2 transition-all ${
-                        table.status === 'RESERVED'
-                          ? 'bg-[#F59E0B] text-white border-transparent'
-                          : table.status === 'AVAILABLE'
-                          ? 'bg-white text-[#5F6F65] border-gray-200 hover:border-[#1A4D2E] hover:text-[#1A4D2E]'
-                          : 'opacity-50 cursor-not-allowed text-gray-400 border-gray-100'
-                      }`}
-                      disabled={table.status === 'OCCUPIED'}
-                    >
-                      {table.status === 'RESERVED' ? 'Unreserve' : 'Reserve'}
-                    </button>
+                    {table.status === 'OCCUPIED' ? (
+                      canFreeTable && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFreeTableConfirm(table);
+                          }}
+                          className="text-xs font-bold px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-md"
+                        >
+                          Free Table
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        onClick={(e) => toggleReservation(e, table)}
+                        className={`text-xs font-bold px-4 py-2 rounded-xl border-2 transition-all ${
+                          table.status === 'RESERVED'
+                            ? 'bg-[#F59E0B] text-white border-transparent'
+                            : 'bg-white text-[#5F6F65] border-gray-200 hover:border-[#1A4D2E] hover:text-[#1A4D2E]'
+                        }`}
+                      >
+                        {table.status === 'RESERVED' ? 'Unreserve' : 'Reserve'}
+                      </button>
+                    )}
                     {table.status === 'OCCUPIED' && table.orders?.[0] && (
                       <span className="text-sm font-black text-[#1A4D2E]">
                         ₹{Number(table.orders[0].totalAmount).toFixed(2)}
@@ -413,6 +479,35 @@ export default function TablesPage() {
                 className="px-6 py-4 bg-[#1A4D2E] text-white rounded-[2rem] font-bold hover:bg-[#143D24] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-lg"
               >
                 Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Free Table Confirmation Modal */}
+      {tableToFree && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-sm w-full p-8 border border-[#E8F5E9] text-center">
+            <div className="h-16 w-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-red-100">
+              <ShieldAlert className="h-8 w-8 text-red-600 animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-black text-red-600 mb-2">Free Table</h2>
+            <p className="text-[#5F6F65] mb-6 font-semibold">
+              Are you sure you want to free {tableToFree.name}?
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setTableToFree(null)}
+                className="px-6 py-4 bg-[#FBFBF2] text-[#5F6F65] rounded-[2rem] font-bold hover:bg-gray-100 transition-colors border border-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFreeTable}
+                className="px-6 py-4 bg-red-600 text-white rounded-[2rem] font-bold hover:bg-red-700 transition-colors shadow-lg"
+              >
+                Free Table
               </button>
             </div>
           </div>

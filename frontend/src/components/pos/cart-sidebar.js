@@ -59,7 +59,7 @@ export default function CartSidebar({ onAddCustomer }) {
         })),
         customer: customer || undefined,
         couponCode: coupon?.code || null,
-        status: orderId ? undefined : 'SENT' // Keep status if editing, set SENT if creating new
+        status: 'DRAFT'
       };
 
       const res = await fetch(`${API_URL}/orders`, {
@@ -272,16 +272,7 @@ export default function CartSidebar({ onAddCustomer }) {
             className="w-full h-14 bg-[#1A4D2E] text-white py-3 rounded-[2rem] font-bold text-lg hover:bg-[#143d24] disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
           >
             <CreditCard className="h-5 w-5" />
-            {checkingOut ? "Checking out..." : "Proceed to Payment"}
-          </button>
-
-          <button 
-            onClick={handleSendToKitchen}
-            disabled={sending || cart.length === 0}
-            className="w-full h-14 bg-[#F5A623] hover:bg-[#D48A14] disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-[2rem] font-bold text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-          >
-            <ChefHat className="h-5 w-5" />
-            {sending ? "Sending..." : "Send to Kitchen"}
+            {checkingOut ? "Processing..." : "Pay Now"}
           </button>
         </div>
       </div>

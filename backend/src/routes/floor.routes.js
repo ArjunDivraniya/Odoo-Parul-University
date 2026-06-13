@@ -14,5 +14,6 @@ router.post('/floors/:id/tables', authenticateToken, requireRole(['ADMIN']), flo
 router.put('/tables/:id', authenticateToken, requireRole(['ADMIN']), floorController.updateTable);
 router.delete('/tables/:id', authenticateToken, requireRole(['ADMIN']), floorController.deleteTable);
 router.post('/tables/transfer', authenticateToken, floorController.transferTable);
+router.patch('/tables/:id/free', authenticateToken, requireRole(['ADMIN', 'EMPLOYEE']), floorController.freeTable);
 
 module.exports = router;

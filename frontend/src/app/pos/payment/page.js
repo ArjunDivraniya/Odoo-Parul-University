@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { DollarSign, CreditCard, Smartphone, ArrowLeft, Check, AlertCircle } from "lucide-react";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { useCartStore } from "@/stores/cart-store";
+import { getSocket } from "@/lib/socket";
+
 
 export default function POSPaymentPage() {
   const { clearCart } = useCartStore();
@@ -24,6 +26,31 @@ export default function POSPaymentPage() {
       return;
     }
     fetchOrderDetails();
+
+    const socket = getSocket();
+    socket.emit('join', 'cashier');
+
+    const handleUpdate = (updatedOrder) => {
+      const payingOrderId = localStorage.getItem('payingOrderId');
+      if (updatedOrder && updatedOrder.id === payingOrderId) {
+        console.log("📶 Order updated via socket:", updatedOrder);
+        setOrder(updatedOrder);
+      }
+    };
+
+    socket.on('order_updated', handleUpdate);
+    socket.on('kitchen_status_changed', (data) => {
+      const payingOrderId = localStorage.getItem('payingOrderId');
+      if (data && data.orderId === payingOrderId) {
+        console.log("📶 Kitchen status changed via socket:", data);
+        fetchOrderDetails();
+      }
+    });
+
+    return () => {
+      socket.off('order_updated', handleUpdate);
+      socket.off('kitchen_status_changed');
+    };
   }, []);
 
   const fetchOrderDetails = async () => {
@@ -101,6 +128,14 @@ export default function POSPaymentPage() {
       
       setProcessing(false);
       setOrderComplete(true);
+
+      // Auto send WhatsApp if phone is available
+      const phoneNum = whatsappNumber || order?.customerMobile;
+      if (phoneNum) {
+        setTimeout(() => {
+          handleShareWhatsApp();
+        }, 500);
+      }
     } catch (e) {
       console.error(e);
       alert(e.message);
@@ -160,6 +195,12 @@ export default function POSPaymentPage() {
               localStorage.removeItem('payingOrderId');
               setProcessing(false);
               setOrderComplete(true);
+              const phoneNum = whatsappNumber || order?.customerMobile;
+              if (phoneNum) {
+                setTimeout(() => {
+                  handleShareWhatsApp();
+                }, 500);
+              }
             } else {
               const verifyErr = await verifyRes.json();
               throw new Error(verifyErr.error || "Payment verification failed");
@@ -206,6 +247,12 @@ export default function POSPaymentPage() {
               localStorage.removeItem('payingOrderId');
               setProcessing(false);
               setOrderComplete(true);
+              const phoneNum = whatsappNumber || order?.customerMobile;
+              if (phoneNum) {
+                setTimeout(() => {
+                  handleShareWhatsApp();
+                }, 500);
+              }
             } else {
               const verifyErr = await verifyRes.json();
               throw new Error(verifyErr.error || "Payment verification failed");
@@ -377,27 +424,12 @@ export default function POSPaymentPage() {
             </div>
           </div>
 
-          {/* Send via WhatsApp Section */}
-          <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 mb-6 text-left">
-            <label className="block text-xs font-bold text-[#1A4D2E] uppercase tracking-wider mb-2">
-              📱 Send WhatsApp Receipt
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
-                placeholder="Country code + Mobile (e.g. 919876543210)"
-                className="flex-1 px-3 py-2 text-sm rounded-xl border border-emerald-200 focus:outline-none focus:border-[#1A4D2E] font-semibold bg-white"
-              />
-              <button
-                onClick={handleShareWhatsApp}
-                className="px-4 py-2 bg-[#1A4D2E] hover:bg-[#143d24] text-white rounded-xl text-xs font-bold transition-all shadow-md"
-              >
-                Send
-              </button>
+          {/* Send via WhatsApp Info */}
+          {whatsappNumber && (
+            <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 mb-6 text-left text-xs font-bold text-[#1A4D2E]">
+              📱 Receipt auto-sent via WhatsApp to {whatsappNumber}
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
@@ -489,6 +521,23 @@ export default function POSPaymentPage() {
           {/* Right: Payment Method & Input */}
           <div className="flex flex-col justify-between">
             <div className="space-y-6">
+              {order?.paymentStatus !== 'PAID' ? (
+                <div className="p-5 rounded-2xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black uppercase tracking-wider mb-1">🔴 Payment Pending</p>
+                    <p className="opacity-90">This order is awaiting payment validation. Click below to complete checkout.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-5 rounded-2xl border border-emerald-200 bg-[#E8F5E9] text-[#1A4D2E] text-xs font-semibold flex items-start gap-3">
+                  <Check className="h-5 w-5 text-[#1A4D2E] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black uppercase tracking-wider mb-1">🟢 Payment Completed</p>
+                    <p className="opacity-90">This order has been paid successfully.</p>
+                  </div>
+                </div>
+              )}
               <h3 className="font-bold text-[#1A4D2E] text-lg">Select Method</h3>
               <div className="grid grid-cols-3 gap-3">
                 <button
@@ -565,7 +614,7 @@ export default function POSPaymentPage() {
                     handleRazorpayPayment();
                   }
                 }}
-                disabled={processing || (paymentMethod === "CASH" && (parseFloat(amountReceived) < total || !amountReceived))}
+                disabled={processing || order?.paymentStatus === 'PAID' || (paymentMethod === "CASH" && (parseFloat(amountReceived) < total || !amountReceived))}
                 className="w-full bg-[#1A4D2E] text-white py-4 rounded-[2rem] font-bold text-lg hover:bg-[#143d24] disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0"
               >
                 {paymentMethod === "CASH" ? `Complete Payment - ₹${total.toFixed(2)}` : 'Pay via Razorpay Test'}

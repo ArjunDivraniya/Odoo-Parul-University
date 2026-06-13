@@ -5,31 +5,73 @@ exports.getStats = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // parallelize queries for performance
-    const [totalRevenue, totalOrders, totalCustomers, todayRevenue] = await Promise.all([
-        prisma.order.aggregate({
-            _sum: { totalAmount: true },
-            where: { status: { in: ['PAID', 'COMPLETED'] } }
-        }),
-        prisma.order.count(),
-        prisma.user.count({ where: { role: 'EMPLOYEE' } }), // Count staff users for the current tenant-aware model.
-        // Actually, schema doesn't have a Customer model, only User.
-        // Let's count "Orders Today" instead of customers for now or maybe distinct sessions?
-        // Let's stick to total Users for now.
-        prisma.order.aggregate({
-            _sum: { totalAmount: true },
-            where: { 
-                status: { in: ['PAID', 'COMPLETED'] },
-                createdAt: { gte: today }
-            }
-        })
+    const [
+      totalRevenue,
+      todayRevenue,
+      totalOrders,
+      ordersToday,
+      pendingOrders,
+      preparingOrders,
+      completedOrders,
+      occupiedTables,
+      availableTables
+    ] = await Promise.all([
+      // Total Revenue (only paid orders)
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { paymentStatus: 'PAID' }
+      }),
+      // Today's Revenue (only paid orders created today)
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { 
+          paymentStatus: 'PAID',
+          createdAt: { gte: today }
+        }
+      }),
+      // Total Paid Orders
+      prisma.order.count({
+        where: { paymentStatus: 'PAID' }
+      }),
+      // Paid Orders Today
+      prisma.order.count({
+        where: { 
+          paymentStatus: 'PAID',
+          createdAt: { gte: today } 
+        }
+      }),
+      // Kitchen Orders (TO_COOK)
+      prisma.kitchenTicket.count({
+        where: { status: 'TO_COOK' }
+      }),
+      // Preparing Orders (PREPARING)
+      prisma.kitchenTicket.count({
+        where: { status: 'PREPARING' }
+      }),
+      // Completed Orders (COMPLETED but not served yet)
+      prisma.kitchenTicket.count({
+        where: { status: 'COMPLETED' }
+      }),
+      // Occupied Tables
+      prisma.table.count({
+        where: { status: 'OCCUPIED' }
+      }),
+      // Available Tables
+      prisma.table.count({
+        where: { status: 'AVAILABLE' }
+      })
     ]);
 
     res.json({
       totalRevenue: totalRevenue._sum.totalAmount || 0,
       todayRevenue: todayRevenue._sum.totalAmount || 0,
       totalOrders,
-      totalUsers: totalCustomers
+      ordersToday,
+      pendingOrders,
+      preparingOrders,
+      completedOrders,
+      occupiedTables,
+      availableTables
     });
   } catch (error) {
     console.error(error);

@@ -152,9 +152,10 @@ exports.transferTable = async (req, res) => {
         const { getIo } = require('../lib/socket');
         const io = getIo();
         if (io) {
-            io.emit('table:status_updated', { tableId: sourceTableId, status: 'AVAILABLE' });
-            io.emit('table:status_updated', { tableId: destTableId, status: 'OCCUPIED' });
-            io.emit('order:status_updated', updatedOrder);
+            io.emit('table_status_changed', { tableId: sourceTableId, status: 'AVAILABLE' });
+            io.emit('table_status_changed', { tableId: destTableId, status: 'OCCUPIED' });
+            io.emit('order_updated', updatedOrder);
+            io.emit('dashboard_updated');
         }
 
         res.json({ message: "Table transfer completed successfully" });
@@ -173,6 +174,60 @@ exports.deleteFloor = async (req, res) => {
         res.json({ message: "Floor deleted successfully" });
     } catch (error) {
         console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.freeTable = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+        const userName = req.user?.name;
+
+        const table = await prisma.table.findUnique({
+            where: { id }
+        });
+
+        if (!table) {
+            return res.status(404).json({ error: "Table not found" });
+        }
+
+        // Check for active unpaid orders
+        const activeUnpaidOrder = await prisma.order.findFirst({
+            where: {
+                tableId: id,
+                paymentStatus: { not: 'PAID' },
+                status: { not: 'CANCELLED' }
+            }
+        });
+
+        if (activeUnpaidOrder) {
+            return res.status(400).json({
+                error: "UNPAID_ACTIVE_ORDER",
+                message: "Please complete or cancel the active order before freeing the table."
+            });
+        }
+
+        // Update Table status to AVAILABLE
+        await prisma.table.update({
+            where: { id },
+            data: { status: 'AVAILABLE' }
+        });
+
+        // Audit Logging
+        console.log(`[AUDIT] Table ${table.name} (ID: ${id}) was manually freed by user ${userName} (ID: ${userId}) at ${new Date().toISOString()}`);
+
+        // Emit Socket.IO Events
+        const { getIo } = require('../lib/socket');
+        const io = getIo();
+        if (io) {
+            io.emit('table_status_changed', { tableId: id, status: 'AVAILABLE' });
+            io.emit('dashboard_updated');
+        }
+
+        res.json({ message: "Table has been freed successfully." });
+    } catch (error) {
+        console.error("Failed to free table:", error);
         res.status(500).json({ error: error.message });
     }
 };
