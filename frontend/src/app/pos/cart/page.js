@@ -1,25 +1,43 @@
+// frontend/src/app/pos/cart/page.js
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Edit2, Package } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Edit2, Package, Tag, Utensils, AlertCircle } from "lucide-react";
 import { useCartStore } from "@/stores/cart-store";
 import CustomerModal from "@/components/pos/CustomerModal";
 
 export default function CartPage() {
-  const { cart, addItem, decreaseQuantity, removeItem, clearCart, customer, setCustomer } = useCartStore();
+  const { 
+    cart, 
+    addItem, 
+    decreaseQuantity, 
+    removeItem, 
+    updateItemNotes,
+    clearCart, 
+    customer, 
+    setCustomer,
+    orderId,
+    coupon,
+    setCoupon
+  } = useCartStore();
+
   const [selectedTable, setSelectedTable] = useState(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponSuccess, setCouponSuccess] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   useEffect(() => {
     const tableData = localStorage.getItem('selectedTable');
     if (tableData) {
       setSelectedTable(JSON.parse(tableData));
     }
-  }, []);
-
-  const getCartTotal = () => {
-    return cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-  };
+    if (coupon) {
+      setCouponInput(coupon.code);
+      setCouponSuccess(`Applied: ${coupon.code}`);
+    }
+  }, [coupon]);
 
   const getCartSubtotal = () => {
     return cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
@@ -28,16 +46,150 @@ export default function CartPage() {
   const getTax = () => {
     return cart.reduce((sum, item) => {
       const itemTotal = Number(item.price) * item.quantity;
-      const tax = (itemTotal * (Number(item.tax) || 0)) / 100;
+      const taxRate = Number(item.tax) || 0;
+      const tax = (itemTotal * taxRate) / 100;
       return sum + tax;
     }, 0);
   };
 
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    localStorage.setItem('pendingOrder', JSON.stringify(cart));
-    if (customer) localStorage.setItem('pendingCustomer', JSON.stringify(customer));
-    window.location.href = '/pos/payment';
+  const getDiscount = (subtotal) => {
+    if (!coupon) return 0;
+    if (coupon.type === 'PERCENTAGE') {
+      return subtotal * (Number(coupon.discount) / 100);
+    } else {
+      return Math.min(subtotal, Number(coupon.discount));
+    }
+  };
+
+  // Coupon Validation
+  const handleApplyCoupon = async () => {
+    if (!couponInput) return;
+    setValidatingCoupon(true);
+    setCouponError("");
+    setCouponSuccess("");
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_URL}/coupons/validate/${couponInput.trim()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCoupon(data);
+        setCouponSuccess(`Coupon code applied successfully!`);
+      } else {
+        const err = await response.json();
+        setCouponError(err.error || "Invalid coupon code");
+        setCoupon(null);
+      }
+    } catch (error) {
+      console.error('Coupon validation failed:', error);
+      setCouponError("Failed to validate coupon");
+      setCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+    setCouponSuccess("");
+  };
+
+  // Send Order to Kitchen
+  const handleSendToKitchen = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const session = JSON.parse(localStorage.getItem('activeSession') || '{}');
+      
+      const payload = {
+        id: orderId || undefined,
+        tableId: selectedTable?.id || null,
+        sessionId: session?.id || null,
+        type: selectedTable ? "DINE_IN" : "TAKEAWAY",
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          variantId: item.variantId || null,
+          notes: item.notes || null
+        })),
+        customer: customer || undefined,
+        couponCode: coupon?.code || null,
+        status: 'SENT'
+      };
+
+      const res = await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        clearCart();
+        window.location.href = '/pos/tables';
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to send order to kitchen");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error sending order to kitchen");
+    }
+  };
+
+  // Proceed to Checkout
+  const handleCheckout = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const session = JSON.parse(localStorage.getItem('activeSession') || '{}');
+      
+      const payload = {
+        id: orderId || undefined,
+        tableId: selectedTable?.id || null,
+        sessionId: session?.id || null,
+        type: selectedTable ? "DINE_IN" : "TAKEAWAY",
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          variantId: item.variantId || null,
+          notes: item.notes || null
+        })),
+        customer: customer || undefined,
+        couponCode: coupon?.code || null,
+        status: orderId ? undefined : 'SENT' // Keep status if editing, set SENT if creating new
+      };
+
+      const res = await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const order = await res.json();
+        localStorage.setItem('payingOrderId', order.id);
+        window.location.href = '/pos/payment';
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to checkout");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Checkout error");
+    }
   };
 
   if (cart.length === 0) {
@@ -62,7 +214,8 @@ export default function CartPage() {
 
   const subtotal = getCartSubtotal();
   const tax = getTax();
-  const total = subtotal + tax;
+  const discount = getDiscount(subtotal);
+  const total = subtotal + tax - discount;
 
   return (
     <div className="h-screen flex flex-col bg-[#FBFBF2]">
@@ -84,7 +237,7 @@ export default function CartPage() {
             <span className="font-semibold">Back to Products</span>
           </button>
           
-          <h1 className="text-3xl font-bold text-[#1A4D2E]">Shopping Cart</h1>
+          <h1 className="text-3xl font-black text-[#1A4D2E]">Shopping Cart</h1>
           
           <button
             onClick={() => clearCart()}
@@ -100,25 +253,14 @@ export default function CartPage() {
       <div className="flex-1 overflow-hidden">
         <div className="max-w-6xl mx-auto h-full flex gap-6 p-6">
           {/* Left: Cart Items */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pr-2">
             <div className="space-y-4">
               {cart.map((item) => (
                 <div
-                  key={item.id}
+                  key={item.cartItemId}
                   className="bg-white rounded-[2rem] p-6 shadow-md border border-[#E8F5E9] hover:shadow-lg transition-all"
                 >
                   <div className="flex gap-6">
-                    {/* Image */}
-                    <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl overflow-hidden flex-shrink-0">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="h-12 w-12 text-gray-300" />
-                        </div>
-                      )}
-                    </div>
-
                     {/* Details */}
                     <div className="flex-1 flex flex-col justify-between">
                       <div>
@@ -127,46 +269,55 @@ export default function CartPage() {
                             <h3 className="text-xl font-bold text-[#1A4D2E] mb-1">{item.name}</h3>
                             <p className="text-sm text-[#5F6F65]">
                               {item.category?.name || 'Uncategorized'}
+                              {item.variantName && ` • Option: ${item.variantName}`}
                             </p>
                           </div>
                           <button
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => removeItem(item.cartItemId)}
                             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                           >
                             <Trash2 className="h-5 w-5" />
                           </button>
                         </div>
-                        
-                        {item.description && (
-                          <p className="text-sm text-[#5F6F65] line-clamp-2 mb-3">
-                            {item.description}
-                          </p>
-                        )}
+
+                        {/* Special Instructions Input */}
+                        <div className="mt-3">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5F6F65] mb-1">
+                            👨‍🍳 Special Instructions
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. No Onion, Extra Cheese, Ice level, etc."
+                            value={item.notes || ""}
+                            onChange={(e) => updateItemNotes(item.cartItemId, e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:border-[#1A4D2E] focus:outline-none bg-[#FBFBF2]/50 font-medium text-[#1A4D2E]"
+                          />
+                        </div>
                       </div>
 
                       {/* Quantity & Price */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 bg-[#FBFBF2] rounded-xl p-2 border border-[#E8F5E9]">
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#FBFBF2]">
+                        <div className="flex items-center gap-3 bg-[#FBFBF2] rounded-xl p-1.5 border border-[#E8F5E9]">
                           <button
-                            onClick={() => decreaseQuantity(item.id)}
-                            className="h-10 w-10 hover:bg-white rounded-lg flex items-center justify-center transition-colors text-[#5F6F65]"
+                            onClick={() => decreaseQuantity(item.cartItemId)}
+                            className="h-9 w-9 hover:bg-white rounded-lg flex items-center justify-center transition-colors text-[#5F6F65]"
                           >
                             <Minus className="h-4 w-4" />
                           </button>
-                          <span className="w-12 text-center font-bold text-[#1A4D2E] text-lg">{item.quantity}</span>
+                          <span className="w-8 text-center font-bold text-[#1A4D2E] text-md">{item.quantity}</span>
                           <button
-                            onClick={() => addItem(item)}
-                            className="h-10 w-10 hover:bg-white rounded-lg flex items-center justify-center transition-colors text-[#5F6F65]"
+                            onClick={() => addItem(item, item.variantId ? { id: item.variantId, name: item.variantName, extraPrice: 0 } : null)}
+                            className="h-9 w-9 hover:bg-white rounded-lg flex items-center justify-center transition-colors text-[#5F6F65]"
                           >
                             <Plus className="h-4 w-4" />
                           </button>
                         </div>
 
                         <div className="text-right">
-                          <p className="text-sm text-[#5F6F65]">
+                          <p className="text-xs text-[#5F6F65]">
                             ₹{Number(item.price).toFixed(2)} × {item.quantity}
                           </p>
-                          <p className="text-2xl font-black text-[#1A4D2E]">
+                          <p className="text-xl font-black text-[#1A4D2E]">
                             ₹{(Number(item.price) * item.quantity).toFixed(2)}
                           </p>
                         </div>
@@ -178,7 +329,7 @@ export default function CartPage() {
             </div>
           </div>
 
-          {/* Right: Summary */}
+          {/* Right: Summary & Coupon */}
           <div className="w-96 space-y-6">
             {/* Customer Info */}
             <div className="bg-white rounded-[2rem] p-6 shadow-md border border-[#E8F5E9]">
@@ -209,6 +360,46 @@ export default function CartPage() {
               </div>
             </div>
 
+            {/* Coupons & Promo Codes */}
+            <div className="bg-white rounded-[2rem] p-6 shadow-md border border-[#E8F5E9] space-y-3">
+              <h3 className="font-bold text-[#1A4D2E] flex items-center gap-2">
+                <Tag className="h-5 w-5 text-[#1A4D2E]" />
+                Promo / Coupon
+              </h3>
+              
+              {!coupon ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter code (e.g. SAVE10)"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    className="flex-1 px-4 py-2 border rounded-xl focus:border-[#1A4D2E] focus:outline-none uppercase font-bold text-sm"
+                  />
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={validatingCoupon || !couponInput}
+                    className="px-4 py-2 bg-[#1A4D2E] text-white rounded-xl font-bold hover:bg-[#143D24] text-sm disabled:opacity-50"
+                  >
+                    {validatingCoupon ? '...' : 'Apply'}
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3 bg-[#E8F5E9] rounded-xl border border-[#4ADE80]/30 flex justify-between items-center">
+                  <div>
+                    <span className="font-black text-[#1A4D2E] text-sm">{coupon.code}</span>
+                    <span className="text-xs text-[#5F6F65] ml-2">({coupon.type === 'PERCENTAGE' ? `${coupon.discount}%` : `₹${coupon.discount}`} off)</span>
+                  </div>
+                  <button onClick={handleRemoveCoupon} className="p-1 hover:bg-white rounded text-red-500">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {couponError && <p className="text-xs text-red-500 font-bold flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {couponError}</p>}
+              {couponSuccess && <p className="text-xs text-emerald-600 font-bold">✓ {couponSuccess}</p>}
+            </div>
+
             {/* Order Summary */}
             <div className="bg-white rounded-[2rem] p-6 shadow-md border border-[#E8F5E9] space-y-4">
               <h3 className="font-bold text-[#1A4D2E] text-lg mb-4">Order Summary</h3>
@@ -218,6 +409,13 @@ export default function CartPage() {
                   <span>Items ({cart.length})</span>
                   <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
                 </div>
+
+                {discount > 0 && (
+                  <div className="flex justify-between text-red-600 font-medium">
+                    <span>Discount</span>
+                    <span>-₹{discount.toFixed(2)}</span>
+                  </div>
+                )}
                 
                 {tax > 0 && (
                   <div className="flex justify-between text-[#5F6F65]">
@@ -234,20 +432,33 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <button
-                onClick={handleCheckout}
-                className="w-full bg-[#1A4D2E] text-white py-4 rounded-[2rem] font-bold text-lg hover:bg-[#143d24] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mt-6"
-              >
-                <CreditCard className="h-5 w-5" />
-                Proceed to Payment
-              </button>
+              {/* Action Buttons */}
+              <div className="space-y-3 pt-4">
+                {selectedTable && (
+                  <button
+                    onClick={handleSendToKitchen}
+                    className="w-full bg-white text-[#1A4D2E] border-2 border-[#1A4D2E] py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#E8F5E9] transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Utensils className="h-5 w-5" />
+                    Send to Kitchen
+                  </button>
+                )}
+
+                <button
+                  onClick={handleCheckout}
+                  className="w-full bg-[#1A4D2E] text-white py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#143d24] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="h-5 w-5" />
+                  Proceed to Payment
+                </button>
+              </div>
             </div>
 
             {/* Table Info */}
             {selectedTable && (
-              <div className="bg-[#E8F5E9] rounded-[2rem] p-4 border border-[#4ADE80]/30">
-                <p className="text-sm text-[#5F6F65] mb-1">Table</p>
-                <p className="font-bold text-[#1A4D2E] text-lg">{selectedTable.name}</p>
+              <div className="bg-[#E8F5E9] rounded-[2rem] p-4 border border-[#4ADE80]/30 text-center">
+                <p className="text-xs text-[#5F6F65] uppercase tracking-wider font-bold">Selected Table</p>
+                <p className="font-black text-[#1A4D2E] text-xl mt-1">{selectedTable.name}</p>
               </div>
             )}
           </div>

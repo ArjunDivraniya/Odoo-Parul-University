@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Menu,
+  Ticket,
 } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
@@ -18,6 +19,7 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: ShoppingBag, label: "Orders", href: "/dashboard/orders" },
   { icon: Coffee, label: "Products", href: "/dashboard/products" },
+  { icon: Ticket, label: "Coupons", href: "/dashboard/coupons" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
 ];
 

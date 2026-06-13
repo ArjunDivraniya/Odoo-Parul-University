@@ -1,20 +1,27 @@
+// frontend/src/app/kitchen/page.js
 "use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { ChefHat, Clock, CheckCircle, LogOut, Flame, Package, Bell, RefreshCw, AlertCircle, Utensils } from "lucide-react";
+import { ChefHat, Clock, CheckCircle, LogOut, Flame, Package, Bell, RefreshCw, AlertCircle, Utensils, X } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
-
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
-
-
+import { getSocket } from "@/lib/socket";
 
 export default function KitchenPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [lastError, setLastError] = useState(null);
   const { logout } = useAuthStore();
+  const [notifications, setNotifications] = useState([]);
+
+  const showToastNotification = (message) => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  };
 
   const fetchOrders = async () => {
     setLastError(null);
@@ -23,22 +30,16 @@ export default function KitchenPage() {
       const token = localStorage.getItem('token');
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 sec timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const response = await fetch(`${API_URL}/kitchen/active`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         signal: controller.signal
       });
       clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
-        // Check for new orders to play sound (simplified logic)
-        if (data.length > orders.length && orders.length > 0) {
-          playSound();
-        }
         setOrders(data);
       } else if (response.status === 401) {
         logout();
@@ -53,22 +54,54 @@ export default function KitchenPage() {
       console.error('Fetch error:', error);
       setLastError(`Connection Error: ${error.message}`);
     } finally {
-      console.log('Fetch finally block reached');
       setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchOrders();
-    // Poll for new orders every 5 seconds
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
-  const playSound = () => {
-    // Optional: Implement actual sound notification
-    console.log('New order received!');
-  };
+    // Socket.IO Integration
+    const socket = getSocket();
+    socket.emit('join', 'kitchen');
+
+    socket.on('order:created', (newOrder) => {
+      console.log('📶 New order received via socket in KDS:', newOrder);
+      setOrders(prevOrders => {
+        // Prevent duplicate entries
+        if (prevOrders.some(o => o.id === newOrder.id)) return prevOrders;
+        return [...prevOrders, newOrder];
+      });
+      showToastNotification(`🔔 New Order #${newOrder.orderNumber?.slice(-3) || 'POS'} created for ${newOrder.table ? newOrder.table.name : 'Takeaway'}!`);
+      
+      // Attempt sound alert (fallback if blocked)
+      try {
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-120.wav");
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+      } catch(e){}
+    });
+
+    socket.on('order:status_updated', (updatedOrder) => {
+      console.log('📶 Order status updated via socket in KDS:', updatedOrder);
+      setOrders(prevOrders => {
+        if (['PAID', 'CANCELLED'].includes(updatedOrder.status)) {
+          // Remove from KDS if paid or cancelled
+          return prevOrders.filter(o => o.id !== updatedOrder.id);
+        }
+        return prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+      });
+    });
+
+    // Fallback polling every 30 seconds
+    const interval = setInterval(fetchOrders, 30000);
+
+    return () => {
+      socket.off('order:created');
+      socket.off('order:status_updated');
+      clearInterval(interval);
+    };
+  }, []);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -85,16 +118,13 @@ export default function KitchenPage() {
       });
 
       if (response.ok) {
-        // Optimistic UI update
+        // Local optimistic update
         setOrders(prevOrders =>
           prevOrders.map(order =>
             order.id === orderId ? { ...order, status: newStatus } : order
           )
         );
-        // Also refresh from server
-        setTimeout(() => fetchOrders(), 500);
       } else {
-        console.error('Failed to update status');
         alert('Failed to update order status');
       }
     } catch (error) {
@@ -106,7 +136,7 @@ export default function KitchenPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#FBFBF2]">
-        <CoffeeLoader size="xl" text="Checking Orders..." />
+        <CoffeeLoader size="xl" text="Connecting to Kitchen..." />
       </div>
     );
   }
@@ -115,7 +145,7 @@ export default function KitchenPage() {
     const now = new Date();
     const created = new Date(createdAt);
     const diffMinutes = Math.floor((now - created) / 60000);
-    return diffMinutes;
+    return Math.max(0, diffMinutes);
   };
 
   const getTimeColor = (minutes) => {
@@ -124,12 +154,12 @@ export default function KitchenPage() {
     return 'text-[#1A4D2E] bg-emerald-50 border-emerald-200';
   };
 
-  // Categorize orders by status
+  // Filter columns based on order status
   const toCookOrders = orders.filter(o => o.status === 'SENT');
   const preparingOrders = orders.filter(o => o.status === 'PREPARING');
   const completedOrders = orders.filter(o => o.status === 'COMPLETED');
 
-  const KitchenColumn = ({ title, orders, icon: Icon, colorClass, nextStatus, emptyText }) => (
+  const KitchenColumn = ({ title, activeOrders, icon: Icon, colorClass, nextStatus, emptyText }) => (
     <div className="flex-1 flex flex-col min-w-0 bg-white/40 backdrop-blur-xl rounded-[2.5rem] border border-white/60 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden h-full">
       {/* Column Header */}
       <div className={`p-6 border-b border-white/50 ${colorClass}`}>
@@ -140,16 +170,16 @@ export default function KitchenPage() {
           <div>
             <h2 className="text-xl font-black text-[#1A4D2E] tracking-tight">{title}</h2>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`h-2 w-2 rounded-full ${orders.length > 0 ? 'bg-[#1A4D2E] animate-pulse' : 'bg-gray-300'}`}></span>
-              <p className="text-sm font-semibold text-gray-500">{orders.length} ACTIVE</p>
+              <span className={`h-2 w-2 rounded-full ${activeOrders.length > 0 ? 'bg-[#1A4D2E] animate-pulse' : 'bg-gray-300'}`}></span>
+              <p className="text-sm font-semibold text-gray-500">{activeOrders.length} ACTIVE</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Orders List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-[#1A4D2E]/20 scrollbar-track-transparent">
-        {orders.length === 0 ? (
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {activeOrders.length === 0 ? (
           <div className="text-center py-24 flex flex-col items-center justify-center h-full opacity-60">
             <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
               <Icon className="h-8 w-8 text-gray-300" />
@@ -157,14 +187,14 @@ export default function KitchenPage() {
             <p className="text-gray-500 font-bold">{emptyText}</p>
           </div>
         ) : (
-          orders.map((order) => {
+          activeOrders.map((order) => {
             const elapsedTime = getElapsedTime(order.createdAt);
 
             return (
               <div
                 key={order.id}
                 onClick={() => nextStatus && updateOrderStatus(order.id, nextStatus)}
-                className={`bg-white rounded-[2rem] p-5 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer border border-transparent hover:border-[#1A4D2E]/20 hover:-translate-y-1 group relative overflow-hidden`}
+                className="bg-white rounded-[2rem] p-5 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer border border-transparent hover:border-[#1A4D2E]/20 hover:-translate-y-1 group relative overflow-hidden"
               >
                 {/* Status Bar */}
                 <div className={`absolute top-0 left-0 w-1.5 h-full ${nextStatus === 'PREPARING' ? 'bg-orange-400' : 'bg-blue-400'} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
@@ -247,6 +277,18 @@ export default function KitchenPage() {
         </div>
       )}
 
+      {/* Notifications */}
+      <div className="fixed top-6 right-6 z-50 space-y-3 max-w-sm">
+        {notifications.map((n) => (
+          <div key={n.id} className="bg-[#1A4D2E] text-[#FEFCE8] p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 border border-[#FEFCE8]/20 animate-bounce">
+            <span className="font-bold text-sm">{n.message}</span>
+            <button onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))} className="text-white/70 hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-b border-gray-100 z-20 px-8 py-5">
         <div className="flex items-center justify-between max-w-[1920px] mx-auto w-full">
@@ -306,40 +348,34 @@ export default function KitchenPage() {
       </header>
 
       {/* Board */}
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <CoffeeLoader size="xl" text="Connecting to Kitchen..." />
+      <div className="flex-1 p-8 overflow-hidden">
+        <div className="flex gap-8 h-full max-w-[1920px] mx-auto w-full">
+          <KitchenColumn
+            title="To Cook"
+            activeOrders={toCookOrders}
+            icon={Package}
+            colorClass="bg-gradient-to-r from-orange-50 to-transparent"
+            nextStatus="PREPARING"
+            emptyText="All caught up! No pending orders"
+          />
+          <KitchenColumn
+            title="On The Grill"
+            activeOrders={preparingOrders}
+            icon={Flame}
+            colorClass="bg-gradient-to-r from-blue-50 to-transparent"
+            nextStatus="COMPLETED"
+            emptyText="Kitchen is clear"
+          />
+          <KitchenColumn
+            title="Ready to Serve"
+            activeOrders={completedOrders}
+            icon={CheckCircle}
+            colorClass="bg-gradient-to-r from-green-50 to-transparent"
+            nextStatus={null}
+            emptyText="No orders waiting for pickup"
+          />
         </div>
-      ) : (
-        <div className="flex-1 p-8 overflow-hidden">
-          <div className="flex gap-8 h-full max-w-[1920px] mx-auto w-full">
-            <KitchenColumn
-              title="To Cook"
-              orders={toCookOrders}
-              icon={Package}
-              colorClass="bg-gradient-to-r from-orange-50 to-transparent"
-              nextStatus="PREPARING"
-              emptyText="All caught up! No pending orders"
-            />
-            <KitchenColumn
-              title="On The Grill"
-              orders={preparingOrders}
-              icon={Flame}
-              colorClass="bg-gradient-to-r from-blue-50 to-transparent"
-              nextStatus="COMPLETED"
-              emptyText="Kitchen is clear"
-            />
-            <KitchenColumn
-              title="Ready to Serve"
-              orders={completedOrders}
-              icon={CheckCircle}
-              colorClass="bg-gradient-to-r from-green-50 to-transparent"
-              nextStatus={null}
-              emptyText="No orders waiting for pickup"
-            />
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
