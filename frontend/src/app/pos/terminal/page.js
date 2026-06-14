@@ -15,9 +15,9 @@ export default function POSTerminalPage() {
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   const { cart, addItem, customer, setCustomer, orderId } = useCartStore();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [session, setSession] = useState(null);
   const [selectedTable, setSelectedTable] = useState(null);
@@ -59,7 +59,7 @@ export default function POSTerminalPage() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
-      
+
       const response = await fetch(`${API_URL}/products`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -67,7 +67,7 @@ export default function POSTerminalPage() {
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
-        
+
         const uniqueCategories = [...new Set(data.map(p => p.category?.name).filter(Boolean))];
         setCategories(uniqueCategories.map((name, idx) => ({ id: idx, name })));
       }
@@ -110,7 +110,7 @@ export default function POSTerminalPage() {
     <div className="flex h-full gap-6 overflow-hidden">
       {/* Left Pane (Fixed header, scrollable cards) */}
       <div className="flex-1 flex flex-col gap-6 overflow-hidden">
-        <CustomerModal 
+        <CustomerModal
           isOpen={isCustomerModalOpen}
           onClose={() => setIsCustomerModalOpen(false)}
           onSave={setCustomer}
@@ -126,7 +126,7 @@ export default function POSTerminalPage() {
             {/* Header */}
             <div className="flex items-center justify-between bg-white p-4 rounded-[2rem] shadow-md border border-[#E8F5E9] shrink-0">
               <div className="flex items-center gap-6">
-                <button 
+                <button
                   onClick={() => setIsCustomerModalOpen(true)}
                   className="flex items-center gap-3 hover:bg-[#FBFBF2] px-3 py-2 rounded-xl transition-colors group"
                 >
@@ -162,7 +162,7 @@ export default function POSTerminalPage() {
                   </>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => window.location.href = '/pos/cart'}
@@ -203,9 +203,8 @@ export default function POSTerminalPage() {
             <div className="flex gap-3 overflow-x-auto pb-2 shrink-0 scrollbar-none">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-6 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm ${
-                  !selectedCategory ? 'bg-[#1A4D2E] text-white' : 'bg-white text-[#5F6F65] hover:bg-[#FBFBF2] border border-[#E8F5E9]'
-                }`}
+                className={`px-6 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm ${!selectedCategory ? 'bg-[#1A4D2E] text-white' : 'bg-white text-[#5F6F65] hover:bg-[#FBFBF2] border border-[#E8F5E9]'
+                  }`}
               >
                 All
               </button>
@@ -213,9 +212,8 @@ export default function POSTerminalPage() {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.name)}
-                  className={`px-6 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm ${
-                    selectedCategory === category.name ? 'bg-[#1A4D2E] text-white' : 'bg-white text-[#5F6F65] hover:bg-[#FBFBF2] border border-[#E8F5E9]'
-                  }`}
+                  className={`px-6 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm ${selectedCategory === category.name ? 'bg-[#1A4D2E] text-white' : 'bg-white text-[#5F6F65] hover:bg-[#FBFBF2] border border-[#E8F5E9]'
+                    }`}
                 >
                   {category.name}
                 </button>
@@ -236,7 +234,7 @@ export default function POSTerminalPage() {
                       onClick={() => addItem(product)}
                     >
                       <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-r from-[#F9E4C9] via-[#FDF5EA] to-[#E6F4EB] opacity-60" />
-                      
+
                       {/* Image */}
                       <div className="relative h-32 overflow-hidden bg-gray-50">
                         <img
@@ -287,7 +285,7 @@ export default function POSTerminalPage() {
                   );
                 })}
               </div>
-              
+
               {filteredProducts.length === 0 && (
                 <div className="text-center py-20 bg-white rounded-[2rem] border border-[#E8F5E9] shadow-sm">
                   <p className="text-lg font-bold text-[#1A4D2E]">No products match search criteria.</p>
@@ -312,7 +310,7 @@ export default function POSTerminalPage() {
             try {
               const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
               const token = localStorage.getItem('token');
-              
+
               const response = await fetch(`${API_URL}/sessions/${session.id}/close`, {
                 method: 'PUT',
                 headers: {

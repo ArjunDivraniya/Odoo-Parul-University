@@ -22,7 +22,7 @@ require('./src/services/whatsapp.service').initialize();
 // ─── Graceful Shutdown ──────────────────────────────────────
 const shutdown = async (signal) => {
   console.log(`\n⏳ ${signal} received. Shutting down gracefully...`);
-  
+
   server.close(async () => {
     await prisma.$disconnect();
     console.log('✅ Server closed. Database disconnected.');
