@@ -18,4 +18,3 @@ router.delete('/:id', authenticateToken, requireRole(['ADMIN']), productControll
 router.get("/products",productController.getProducts);
 
 module.exports = router;
-    
