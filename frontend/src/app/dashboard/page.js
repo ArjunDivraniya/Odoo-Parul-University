@@ -91,7 +91,7 @@ export default function DashboardPage() {
         const headers = { Authorization: `Bearer ${token}` };
 
         const [statsRes, ordersRes] = await Promise.all([
-          fetch(`${API_URL}/dashboard/stats`, { headers }),
+          fetch(`${API_URL}/dashboard/stats?range=${activeRange}`, { headers }),
           fetch(`${API_URL}/dashboard/recent-orders`, { headers }),
         ]);
 
@@ -112,7 +112,7 @@ export default function DashboardPage() {
     };
 
     if (token) fetchData();
-  }, [token, refreshKey]);
+  }, [token, refreshKey, activeRange]);
 
   /* ✅ Fetch Chart Data Based on Active Range */
   useEffect(() => {
@@ -284,11 +284,23 @@ export default function DashboardPage() {
       {/* ✅ STATS */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard title="Total Revenue" value={`₹${stats?.totalRevenue || 0}`} icon={DollarSign} />
-        <StatsCard title="Today's Revenue" value={`₹${stats?.todayRevenue || 0}`} icon={TrendingUp} />
-        <StatsCard title="Orders Today" value={stats?.ordersToday || 0} icon={ShoppingBag} />
+        <StatsCard 
+          title={`${activeRange.charAt(0).toUpperCase() + activeRange.slice(1)}'s Revenue`} 
+          value={`₹${stats?.periodRevenue || 0}`} 
+          icon={TrendingUp} 
+        />
+        <StatsCard 
+          title={`Orders (${activeRange})`} 
+          value={stats?.periodOrders || 0} 
+          icon={ShoppingBag} 
+        />
         <StatsCard title="Pending Orders" value={stats?.pendingOrders || 0} icon={Clock} />
         <StatsCard title="Preparing Orders" value={stats?.preparingOrders || 0} icon={ChefHat} />
-        <StatsCard title="Completed Orders" value={stats?.completedOrders || 0} icon={CheckCircle} />
+        <StatsCard 
+          title={`Completed (${activeRange})`} 
+          value={stats?.completedOrders || 0} 
+          icon={CheckCircle} 
+        />
         <StatsCard title="Occupied Tables" value={stats?.occupiedTables || 0} icon={Users} />
         <StatsCard title="Available Tables" value={stats?.availableTables || 0} icon={Coffee} />
       </section>
@@ -415,12 +427,12 @@ export default function DashboardPage() {
         {/* ✅ Right Panel */}
         <div className="flex flex-col gap-6">
           {/* ✅ Heatmap */}
-          <div className="rounded-3xl bg-white p-6 shadow-lg">
+          <div className="rounded-3xl bg-white p-6 shadow-lg border border-[#F1EEDB]">
             <h3 className="font-bold text-[#1A4D2E] mb-4">
-              Weekly Orders Heatmap
+              Hourly Activity Heatmap
             </h3>
 
-            <div style={{ height: 260 }}>
+            <div style={{ height: 280 }}>
               {chartsLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <CoffeeLoader size="sm" text="" />
@@ -428,15 +440,26 @@ export default function DashboardPage() {
               ) : heatmapData.length > 0 ? (
                 <ResponsiveHeatMap
                   data={heatmapData}
-                  margin={{ top: 30, right: 20, bottom: 40, left: 80 }}
+                  margin={{ top: 20, right: 10, bottom: 60, left: 50 }}
                   axisTop={null}
                   axisRight={null}
+                  axisBottom={{
+                    tickSize: 5,
+                    tickPadding: 5,
+                    tickRotation: -45,
+                    legend: 'Hour of Day',
+                    legendPosition: 'middle',
+                    legendOffset: 45
+                  }}
                   colors={{ type: "sequential", scheme: "greens" }}
                   enableLabels={false}
+                  opacity={0.9}
+                  emptyColor="#FDFCF7"
                 />
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  <p>No data available</p>
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-[#FDFCF7] rounded-2xl border-2 border-dashed border-[#F1EEDB]">
+                  <Clock className="h-8 w-8 mb-2 opacity-20" />
+                  <p className="text-sm">No activity data yet</p>
                 </div>
               )}
             </div>

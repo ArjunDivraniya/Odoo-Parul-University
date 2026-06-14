@@ -3,106 +3,119 @@ const prisma = require('../lib/prisma');
 exports.getStats = async (req, res) => {
   try {
     const shopId = req.user.shopId;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { range = 'day' } = req.query;
+    const now = new Date();
+    let startDate = new Date();
+    
+    // Determine start date based on range
+    if (range === 'day') {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (range === 'week') {
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (range === 'month') {
+      startDate.setDate(now.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (range === 'year') {
+      startDate.setFullYear(now.getFullYear() - 1);
+      startDate.setHours(0, 0, 0, 0);
+    }
 
-    const orderWhere = {
-      user: shopId ? { shopId } : undefined
+    // Multi-tenant filtering: Get all user IDs belonging to this shop
+    let orderWhere = {};
+    if (shopId) {
+      const shopUsers = await prisma.user.findMany({
+        where: { shopId },
+        select: { id: true }
+      });
+      const userIds = shopUsers.map(u => u.id);
+      orderWhere = { userId: { in: userIds } };
+    }
+
+    const periodStatusWhere = {
+      status: { in: ['PAID', 'COMPLETED'] },
+      createdAt: { gte: startDate },
+      ...orderWhere
     };
 
     const [
       totalRevenue,
-      todayRevenue,
-      totalOrders,
-      ordersToday,
+      periodRevenue,
+      periodOrders,
       pendingOrders,
       preparingOrders,
-      completedOrders,
+      completedOrdersInPeriod,
       occupiedTables,
       availableTables,
       totalUsers
     ] = await Promise.all([
-      // Total Revenue (only paid orders)
+      // Total Revenue (all time PAID/COMPLETED orders)
       prisma.order.aggregate({
         _sum: { totalAmount: true },
         where: { 
-          paymentStatus: 'PAID',
+          status: { in: ['PAID', 'COMPLETED'] },
           ...orderWhere
         }
       }),
-      // Today's Revenue (only paid orders created today)
+      // Period Revenue (PAID/COMPLETED in range)
       prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: { 
-          paymentStatus: 'PAID',
-          createdAt: { gte: today },
-          ...orderWhere
-        }
+        where: periodStatusWhere
       }),
-      // Total Paid Orders
+      // Period Orders (Total orders in range except CANCELLED)
       prisma.order.count({
         where: { 
-          paymentStatus: 'PAID',
+          createdAt: { gte: startDate },
+          status: { not: 'CANCELLED' },
           ...orderWhere
         }
       }),
-      // Paid Orders Today
+      // Pending Orders (SENT status) - Real-time workload
       prisma.order.count({
         where: { 
-          paymentStatus: 'PAID',
-          createdAt: { gte: today },
+          status: 'SENT',
           ...orderWhere
         }
       }),
-      // Kitchen Orders (TO_COOK)
-      prisma.kitchenTicket.count({
-        where: { 
-          status: 'TO_COOK',
-          order: orderWhere
-        }
-      }),
-      // Preparing Orders (PREPARING)
-      prisma.kitchenTicket.count({
+      // Preparing Orders (PREPARING status) - Real-time workload
+      prisma.order.count({
         where: { 
           status: 'PREPARING',
-          order: orderWhere
+          ...orderWhere
         }
       }),
-      // Completed Orders (COMPLETED but not served yet)
-      prisma.kitchenTicket.count({
-        where: { 
-          status: 'COMPLETED',
-          order: orderWhere
-        }
+      // Completed Orders in this period
+      prisma.order.count({
+        where: periodStatusWhere
       }),
-      // Occupied Tables
+      // Occupied Tables - Global for now as tables lack shopId
       prisma.table.count({
         where: { status: 'OCCUPIED' }
       }),
-      // Available Tables
+      // Available Tables - Global for now
       prisma.table.count({
         where: { status: 'AVAILABLE' }
       }),
-      // Total Users
-      prisma.user.count({ 
-        where: { role: 'EMPLOYEE', shopId: shopId || undefined } 
+      // Total Users in this shop
+      prisma.user.count({
+        where: shopId ? { shopId } : {}
       })
     ]);
 
     res.json({
-      totalRevenue: Number(totalRevenue._sum.totalAmount) || 0,
-      todayRevenue: Number(todayRevenue._sum.totalAmount) || 0,
-      totalOrders,
-      ordersToday,
-      pendingOrders,
-      preparingOrders,
-      completedOrders,
-      occupiedTables,
-      availableTables,
-      totalUsers
+      totalRevenue: Number(totalRevenue._sum.totalAmount || 0),
+      periodRevenue: Number(periodRevenue._sum.totalAmount || 0),
+      periodOrders: Number(periodOrders || 0),
+      pendingOrders: Number(pendingOrders || 0),
+      preparingOrders: Number(preparingOrders || 0),
+      completedOrders: Number(completedOrdersInPeriod || 0),
+      occupiedTables: Number(occupiedTables || 0),
+      availableTables: Number(availableTables || 0),
+      totalOrders: Number(periodOrders || 0), // Fallback for hero section
+      totalUsers: Number(totalUsers || 0)      // Fallback for hero section
     });
   } catch (error) {
-    console.error(error);
+    console.error("Dashboard Stats Error:", error);
     res.status(500).json({ error: "Failed to fetch stats" });
   }
 };
@@ -198,53 +211,7 @@ exports.getSalesTrends = async (req, res) => {
       groupBy = 'month';
     }
 
-    const whereClause = {
-      order: {
-        createdAt: { gte: startDate },
-        status: { in: ['PAID', 'COMPLETED'] },
-        user: shopId ? { shopId } : undefined
-      }
-    };
-
-    // First, get top 3 categories by revenue to focus the chart
-    const topCategories = await prisma.orderItem.groupBy({
-      by: ['productId'],
-      where: whereClause,
-      _sum: {
-        quantity: true
-      }
-    });
-
-    const productIds = topCategories.map(t => t.productId);
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
-      include: { category: true }
-    });
-
-    // Map product IDs to category names
-    const productCategoryMap = {};
-    products.forEach(p => {
-      productCategoryMap[p.id] = p.category?.name || 'Other';
-    });
-
-    // Get unique categories and use top 3 by total sales
-    const categoryRevenue = {};
-    topCategories.forEach(item => {
-      const category = productCategoryMap[item.productId] || 'Other';
-      categoryRevenue[category] = (categoryRevenue[category] || 0) + (item._sum.quantity || 0);
-    });
-
-    const topThreeCategories = Object.entries(categoryRevenue)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([cat]) => cat);
-
-    // Default categories if database is empty
-    const categories = topThreeCategories.length > 0 
-      ? topThreeCategories 
-      : ['Beverages', 'Food', 'Desserts'];
-
-    // Get orders with items and products
+    // Get orders with items and products for the given range and shop
     const orders = await prisma.order.findMany({
       where: {
         createdAt: { gte: startDate },
@@ -261,54 +228,84 @@ exports.getSalesTrends = async (req, res) => {
             }
           }
         }
-      }
+      },
+      orderBy: { createdAt: 'asc' }
     });
 
-    // Process data based on grouping
-    const dataMap = {};
-    
+    // 1. Identify all categories present in the data
+    const categorySet = new Set();
     orders.forEach(order => {
-      let timeSlot;
-      const orderDate = new Date(order.createdAt);
-      
-      if (groupBy === 'hour') {
-        const hour = orderDate.getHours();
-        timeSlot = `${hour % 12 || 12} ${hour >= 12 ? 'PM' : 'AM'}`;
-      } else if (groupBy === 'day') {
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        timeSlot = days[orderDate.getDay()];
-      } else if (groupBy === 'week') {
-        const weekNum = Math.floor((orderDate - startDate) / (7 * 24 * 60 * 60 * 1000)) + 1;
-        timeSlot = `Week ${weekNum}`;
-      } else {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        timeSlot = months[orderDate.getMonth()];
-      }
-
-      if (!dataMap[timeSlot]) {
-        const categoryData = {};
-        categories.forEach(cat => {
-          categoryData[cat.toLowerCase().replace(/\s+/g, '')] = 0;
-        });
-        dataMap[timeSlot] = { slot: timeSlot, ...categoryData, _categories: categories };
-      }
-
       order.items.forEach(item => {
-        const categoryName = item.product?.category?.name || 'Other';
-        if (categories.includes(categoryName)) {
-          const key = categoryName.toLowerCase().replace(/\s+/g, '');
-          const revenue = Number(item.price) * item.quantity;
-          dataMap[timeSlot][key] += revenue;
+        if (item.product?.category?.name) {
+          categorySet.add(item.product.category.name);
+        } else {
+          categorySet.add('Other');
         }
       });
     });
 
-    const result = Object.values(dataMap).map(({ _categories, ...rest }) => rest);
+    const allCategories = Array.from(categorySet);
+    // If no categories found, default to some sensible ones to avoid empty state issues
+    const displayCategories = allCategories.length > 0 ? allCategories : ['Beverages', 'Food', 'Desserts'];
+
+    // 2. Process data into time slots
+    const dataMap = {};
     
-    // Return both data and category info for frontend
+    // Helper to get sortable slot key
+    const getSlotKey = (date, mode) => {
+      if (mode === 'hour') return date.getHours(); // 0-23
+      if (mode === 'day') return date.getDay(); // 0-6
+      if (mode === 'week') return Math.floor((date - startDate) / (7 * 24 * 60 * 60 * 1000));
+      return date.getMonth(); // 0-11
+    };
+
+    orders.forEach(order => {
+      const orderDate = new Date(order.createdAt);
+      const slotKey = getSlotKey(orderDate, groupBy);
+      
+      let timeLabel;
+      if (groupBy === 'hour') {
+        const hour = orderDate.getHours();
+        timeLabel = `${hour % 12 || 12} ${hour >= 12 ? 'PM' : 'AM'}`;
+      } else if (groupBy === 'day') {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        timeLabel = days[orderDate.getDay()];
+      } else if (groupBy === 'week') {
+        timeLabel = `Week ${slotKey + 1}`;
+      } else {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        timeLabel = months[orderDate.getMonth()];
+      }
+
+      if (!dataMap[slotKey]) {
+        const categoryData = {};
+        displayCategories.forEach(cat => {
+          categoryData[cat.toLowerCase().replace(/\s+/g, '')] = 0;
+        });
+        dataMap[slotKey] = { slot: timeLabel, sortKey: slotKey, ...categoryData };
+      }
+
+      order.items.forEach(item => {
+        const catName = item.product?.category?.name || 'Other';
+        const key = catName.toLowerCase().replace(/\s+/g, '');
+        const revenue = Number(item.price) * item.quantity;
+        if (dataMap[slotKey].hasOwnProperty(key)) {
+          dataMap[slotKey][key] += revenue;
+        } else {
+          // In case a category was missed in categorySet (shouldn't happen)
+          dataMap[slotKey][key] = revenue;
+        }
+      });
+    });
+
+    // Sort result by time
+    const result = Object.values(dataMap)
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(({ sortKey, ...rest }) => rest);
+    
     res.json({
       data: result,
-      categories: categories
+      categories: displayCategories
     });
   } catch (error) {
     console.error('Sales trends error:', error);
@@ -385,51 +382,30 @@ exports.getHeatmapData = async (req, res) => {
       }
     });
 
-    // Initialize data structure
+    // Initialize data structure: Day of Week vs Hour
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const slots = {
-      'Breakfast': {},
-      'Lunch': {},
-      'Evening': {}
-    };
+    const hours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
 
-    days.forEach(day => {
-      slots['Breakfast'][day] = 0;
-      slots['Lunch'][day] = 0;
-      slots['Evening'][day] = 0;
-    });
+    const heatmap = days.map(day => ({
+      id: day,
+      data: hours.map(hour => ({
+        x: hour,
+        y: 0
+      }))
+    }));
 
     // Process orders
     orders.forEach(order => {
       const date = new Date(order.createdAt);
-      const hour = date.getHours();
+      const hourIndex = date.getHours();
       const dayIndex = (date.getDay() + 6) % 7; // Convert to Mon=0, Sun=6
-      const dayName = days[dayIndex];
-
-      let timeSlot;
-      if (hour >= 6 && hour < 11) {
-        timeSlot = 'Breakfast';
-      } else if (hour >= 11 && hour < 16) {
-        timeSlot = 'Lunch';
-      } else if (hour >= 16 && hour < 22) {
-        timeSlot = 'Evening';
-      } else {
-        return; // Skip orders outside these hours
+      
+      if (heatmap[dayIndex] && heatmap[dayIndex].data[hourIndex]) {
+        heatmap[dayIndex].data[hourIndex].y++;
       }
-
-      slots[timeSlot][dayName]++;
     });
 
-    // Convert to format expected by Nivo heatmap
-    const result = Object.keys(slots).map(slot => ({
-      id: slot,
-      data: days.map(day => ({
-        x: day,
-        y: slots[slot][day]
-      }))
-    }));
-
-    res.json(result);
+    res.json(heatmap);
   } catch (error) {
     console.error('Heatmap error:', error);
     res.status(500).json({ error: 'Failed to fetch heatmap data' });
