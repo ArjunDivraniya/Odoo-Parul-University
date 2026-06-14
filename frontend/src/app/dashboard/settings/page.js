@@ -70,6 +70,20 @@ export default function SettingsPage() {
 
   // --- Actions ---
 
+  const formatErrorMessage = (err) => {
+    if (!err) return "An unknown error occurred.";
+    if (typeof err === "string") return err;
+    if (typeof err.error === "string") return err.error;
+    if (Array.isArray(err.error)) {
+      return err.error.map(e => {
+        const fieldName = e.path && e.path.length > 0 ? e.path[e.path.length - 1] : "";
+        return `${fieldName ? fieldName + ": " : ""}${e.message}`;
+      }).join("\n");
+    }
+    if (err.message) return err.message;
+    return JSON.stringify(err);
+  };
+
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
@@ -87,10 +101,13 @@ export default function SettingsPage() {
 
       if (response.ok) {
         showToast("Settings saved successfully!", "success");
+      } else {
+        const err = await response.json();
+        showAlert(formatErrorMessage(err), "Save Settings", "error");
       }
     } catch (error) {
       console.error("Save failed:", error);
-      showAlert("Failed to save settings", "Save Settings", "error");
+      showAlert(error.message, "Save Settings", "error");
     } finally {
       setSaving(false);
     }
@@ -106,6 +123,7 @@ export default function SettingsPage() {
     const method = editingUser ? 'PUT' : 'POST';
     const url = editingUser ? `${API_URL}/users/${editingUser.id}` : `${API_URL}/users`;
 
+    setSaving(true);
     try {
       const res = await fetch(url, {
         method,
@@ -113,30 +131,48 @@ export default function SettingsPage() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        fetchData();
+        await fetchData();
         setShowUserModal(false);
         setEditingUser(null);
+        showToast(`User ${editingUser ? "updated" : "created"} successfully!`, "success");
       } else {
         const err = await res.json();
-        showAlert(err.error, "User Settings", "error");
+        showAlert(formatErrorMessage(err), "User Settings", "error");
       }
-    } catch (e) { showAlert(e.message, "User Settings", "error"); }
+    } catch (e) { 
+      showAlert(e.message, "User Settings", "error"); 
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteUser = async (id) => {
     const confirmed = await showConfirm("Are you sure you want to delete this user?", "Delete User");
     if (!confirmed) return;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
-    const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-    showToast("User deleted successfully", "success");
-    fetchData();
+    setSaving(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        showToast("User deleted successfully", "success");
+        await fetchData();
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Delete User", "error");
+      }
+    } catch (e) {
+      showAlert(e.message, "Delete User", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Terminals
   const handleSaveTerminal = async (name) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
     const token = localStorage.getItem('token');
+    setSaving(true);
     try {
       const res = await fetch(`${API_URL}/terminals`, {
         method: 'POST',
@@ -144,27 +180,47 @@ export default function SettingsPage() {
         body: JSON.stringify({ name })
       });
       if (res.ok) {
-        fetchData();
+        await fetchData();
         setShowTerminalModal(false);
         showToast("Terminal created successfully", "success");
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Terminal Settings", "error");
       }
-    } catch (e) { showAlert(e.message, "Terminal Settings", "error"); }
+    } catch (e) { 
+      showAlert(e.message, "Terminal Settings", "error"); 
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteTerminal = async (id) => {
     const confirmed = await showConfirm("Are you sure you want to delete this terminal?", "Delete Terminal");
     if (!confirmed) return;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
-    const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/terminals/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-    showToast("Terminal deleted successfully", "success");
-    fetchData();
+    setSaving(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/terminals/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        showToast("Terminal deleted successfully", "success");
+        await fetchData();
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Delete Terminal", "error");
+      }
+    } catch (e) {
+      showAlert(e.message, "Delete Terminal", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Categories
   const handleSaveCategory = async (name) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
     const token = localStorage.getItem('token');
+    setSaving(true);
     try {
       const res = await fetch(`${API_URL}/products/categories`, {
         method: 'POST',
@@ -172,25 +228,39 @@ export default function SettingsPage() {
         body: JSON.stringify({ name })
       });
       if (res.ok) {
-        fetchData();
+        await fetchData();
         setShowCategoryModal(false);
         showToast("Category created successfully", "success");
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Category Settings", "error");
       }
-    } catch (e) { showAlert(e.message, "Category Settings", "error"); }
+    } catch (e) { 
+      showAlert(e.message, "Category Settings", "error"); 
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteCategory = async (id) => {
     const confirmed = await showConfirm("Are you sure you want to delete this category?", "Delete Category");
     if (!confirmed) return;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/products/categories/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) {
-      const err = await res.json();
-      showAlert(err.error || "Failed to delete category", "Category Settings", "error");
-    } else {
-      showToast("Category deleted successfully", "success");
-      fetchData();
+    setSaving(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/products/categories/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Category Settings", "error");
+      } else {
+        showToast("Category deleted successfully", "success");
+        await fetchData();
+      }
+    } catch (e) {
+      showAlert(e.message, "Category Settings", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -198,6 +268,7 @@ export default function SettingsPage() {
   const handleSaveFloor = async (name) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
     const token = localStorage.getItem('token');
+    setSaving(true);
     try {
       const res = await fetch(`${API_URL}/floors`, {
         method: 'POST',
@@ -205,27 +276,47 @@ export default function SettingsPage() {
         body: JSON.stringify({ name })
       });
       if (res.ok) {
-        fetchData();
+        await fetchData();
         setShowFloorModal(false);
         showToast("Floor created successfully", "success");
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Floor Settings", "error");
       }
-    } catch (e) { showAlert(e.message, "Floor Settings", "error"); }
+    } catch (e) { 
+      showAlert(e.message, "Floor Settings", "error"); 
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteFloor = async (id) => {
     const confirmed = await showConfirm("Are you sure you want to delete this floor and all its tables?", "Delete Floor");
     if (!confirmed) return;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
-    const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/floors/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-    showToast("Floor deleted successfully", "success");
-    fetchData();
+    setSaving(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/floors/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        showToast("Floor deleted successfully", "success");
+        await fetchData();
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Floor Settings", "error");
+      }
+    } catch (e) {
+      showAlert(e.message, "Floor Settings", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Tables
   const handleSaveTable = async (name, seats) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
     const token = localStorage.getItem('token');
+    setSaving(true);
     try {
       const res = await fetch(`${API_URL}/floors/${selectedFloorForTable}/tables`, {
         method: 'POST',
@@ -233,22 +324,41 @@ export default function SettingsPage() {
         body: JSON.stringify({ name, seats })
       });
       if (res.ok) {
-        fetchData();
+        await fetchData();
         setShowTableModal(false);
         setSelectedFloorForTable(null);
         showToast("Table created successfully", "success");
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Table Settings", "error");
       }
-    } catch (e) { showAlert(e.message, "Table Settings", "error"); }
+    } catch (e) { 
+      showAlert(e.message, "Table Settings", "error"); 
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteTable = async (id) => {
     const confirmed = await showConfirm("Are you sure you want to delete this table?", "Delete Table");
     if (!confirmed) return;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
-    const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/tables/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-    showToast("Table deleted successfully", "success");
-    fetchData();
+    setSaving(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/tables/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        showToast("Table deleted successfully", "success");
+        await fetchData();
+      } else {
+        const err = await res.json();
+        showAlert(formatErrorMessage(err), "Table Settings", "error");
+      }
+    } catch (e) {
+      showAlert(e.message, "Table Settings", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tabs = [
@@ -662,6 +772,7 @@ export default function SettingsPage() {
       {showUserModal && (
         <UserModal
           user={editingUser}
+          saving={saving}
           onClose={() => setShowUserModal(false)}
           onSave={handleSaveUser}
         />
@@ -670,6 +781,7 @@ export default function SettingsPage() {
         <InputModal
           title="Add Terminal"
           label="Terminal Name"
+          saving={saving}
           onClose={() => setShowTerminalModal(false)}
           onSave={handleSaveTerminal}
         />
@@ -678,6 +790,7 @@ export default function SettingsPage() {
         <InputModal
           title="Add Category"
           label="Category Name"
+          saving={saving}
           onClose={() => setShowCategoryModal(false)}
           onSave={handleSaveCategory}
         />
@@ -686,12 +799,14 @@ export default function SettingsPage() {
         <InputModal
           title="Add Floor"
           label="Floor Name"
+          saving={saving}
           onClose={() => setShowFloorModal(false)}
           onSave={handleSaveFloor}
         />
       )}
       {showTableModal && (
         <TableModal
+          saving={saving}
           onClose={() => setShowTableModal(false)}
           onSave={handleSaveTable}
         />
@@ -713,50 +828,73 @@ export default function SettingsPage() {
 
 // --- Sub Components ---
 
-function InputModal({ title, label, onClose, onSave }) {
+function InputModal({ title, label, onClose, onSave, saving }) {
   const [val, setVal] = useState("");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={saving ? undefined : onClose}>
       <div className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="text-xl font-bold text-coffee-800">{title}</h3>
         <div>
           <label className="block text-sm font-bold text-gray-600 mb-2">{label}</label>
-          <input autoFocus className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none" value={val} onChange={e => setVal(e.target.value)} />
+          <input 
+            autoFocus 
+            disabled={saving}
+            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none disabled:opacity-50" 
+            value={val} 
+            onChange={e => setVal(e.target.value)} 
+          />
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl">Cancel</button>
-          <button onClick={() => onSave(val)} disabled={!val} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl">Save</button>
+          <button onClick={onClose} disabled={saving} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl disabled:opacity-50">Cancel</button>
+          <button onClick={() => onSave(val)} disabled={!val || saving} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl disabled:opacity-50">
+            {saving ? "Saving..." : "Save"}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function TableModal({ onClose, onSave }) {
+function TableModal({ onClose, onSave, saving }) {
   const [name, setName] = useState("");
   const [seats, setSeats] = useState("4");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={saving ? undefined : onClose}>
       <div className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="text-xl font-bold text-coffee-800">Add Table</h3>
         <div>
           <label className="block text-sm font-bold text-gray-600 mb-2">Table Name</label>
-          <input autoFocus placeholder="e.g. Table 1" className="w-full px-4 py-2 border rounded-xl outline-none focus:border-[#1A4D2E]" value={name} onChange={e => setName(e.target.value)} />
+          <input 
+            autoFocus 
+            disabled={saving}
+            placeholder="e.g. Table 1" 
+            className="w-full px-4 py-2 border rounded-xl outline-none focus:border-[#1A4D2E] disabled:opacity-50" 
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+          />
         </div>
         <div>
           <label className="block text-sm font-bold text-gray-600 mb-1">Seats Count</label>
-          <input type="number" className="w-full px-4 py-2 border rounded-xl outline-none focus:border-[#1A4D2E]" value={seats} onChange={e => setSeats(e.target.value)} />
+          <input 
+            type="number" 
+            disabled={saving}
+            className="w-full px-4 py-2 border rounded-xl outline-none focus:border-[#1A4D2E] disabled:opacity-50" 
+            value={seats} 
+            onChange={e => setSeats(e.target.value)} 
+          />
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl">Cancel</button>
-          <button onClick={() => onSave(name, Number(seats))} disabled={!name || !seats} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl">Save</button>
+          <button onClick={onClose} disabled={saving} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl disabled:opacity-50">Cancel</button>
+          <button onClick={() => onSave(name, Number(seats))} disabled={!name || !seats || saving} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl disabled:opacity-50">
+            {saving ? "Saving..." : "Save"}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function UserModal({ user, onClose, onSave }) {
+function UserModal({ user, onClose, onSave, saving }) {
   const [data, setData] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -765,21 +903,37 @@ function UserModal({ user, onClose, onSave }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={saving ? undefined : onClose}>
       <div className="bg-white rounded-3xl w-full max-w-md p-8 space-y-5" onClick={e => e.stopPropagation()}>
         <h3 className="text-2xl font-bold text-coffee-800">{user ? "Edit User" : "Add New User"}</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-1">Full Name</label>
-            <input className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none" value={data.name} onChange={e => setData({ ...data, name: e.target.value })} />
+            <input 
+              disabled={saving}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none disabled:opacity-50" 
+              value={data.name} 
+              onChange={e => setData({ ...data, name: e.target.value })} 
+            />
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-1">Email</label>
-            <input type="email" className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none" value={data.email} onChange={e => setData({ ...data, email: e.target.value })} />
+            <input 
+              type="email" 
+              disabled={saving}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none disabled:opacity-50" 
+              value={data.email} 
+              onChange={e => setData({ ...data, email: e.target.value })} 
+            />
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-1">Role</label>
-            <select className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none bg-white" value={data.role} onChange={e => setData({ ...data, role: e.target.value })}>
+            <select 
+              disabled={saving}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none bg-white disabled:opacity-50" 
+              value={data.role} 
+              onChange={e => setData({ ...data, role: e.target.value })}
+            >
               <option value="EMPLOYEE">Cashier</option>
               <option value="KITCHEN">Kitchen</option>
               <option value="ADMIN">Admin</option>
@@ -787,12 +941,20 @@ function UserModal({ user, onClose, onSave }) {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-1">{user ? "New Password (Optional)" : "Password"}</label>
-            <input type="password" className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none" value={data.password} onChange={e => setData({ ...data, password: e.target.value })} />
+            <input 
+              type="password" 
+              disabled={saving}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-coffee-600 outline-none disabled:opacity-50" 
+              value={data.password} 
+              onChange={e => setData({ ...data, password: e.target.value })} 
+            />
           </div>
         </div>
         <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 py-3 font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Cancel</button>
-          <button onClick={() => onSave(data)} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl hover:bg-[#143D24]">Save User</button>
+          <button onClick={onClose} disabled={saving} className="flex-1 py-3 font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50">Cancel</button>
+          <button onClick={() => onSave(data)} disabled={saving} className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl hover:bg-[#143D24] disabled:opacity-50">
+            {saving ? "Saving..." : "Save User"}
+          </button>
         </div>
       </div>
     </div>

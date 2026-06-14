@@ -10,6 +10,7 @@ export default function CouponsDashboardPage() {
   const { showToast, showAlert, showConfirm } = usePopup();
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCoupon, setNewCoupon] = useState({
     code: "",
@@ -17,6 +18,20 @@ export default function CouponsDashboardPage() {
     type: "PERCENTAGE",
     expiresAt: ""
   });
+
+  const formatErrorMessage = (err) => {
+    if (!err) return "An unknown error occurred.";
+    if (typeof err === "string") return err;
+    if (typeof err.error === "string") return err.error;
+    if (Array.isArray(err.error)) {
+      return err.error.map(e => {
+        const fieldName = e.path && e.path.length > 0 ? e.path[e.path.length - 1] : "";
+        return `${fieldName ? fieldName + ": " : ""}${e.message}`;
+      }).join("\n");
+    }
+    if (err.message) return err.message;
+    return JSON.stringify(err);
+  };
 
   useEffect(() => {
     fetchCoupons();
@@ -45,6 +60,7 @@ export default function CouponsDashboardPage() {
 
   const handleCreateCoupon = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -68,15 +84,18 @@ export default function CouponsDashboardPage() {
         showToast("Coupon created successfully!", "success");
       } else {
         const err = await response.json();
-        showAlert(err.error || "Failed to create coupon", "Create Coupon", "error");
+        showAlert(formatErrorMessage(err), "Create Coupon", "error");
       }
     } catch (error) {
       console.error("Failed to create coupon:", error);
-      showAlert("Error creating coupon", "Create Coupon", "error");
+      showAlert(formatErrorMessage(error), "Create Coupon", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleToggleActive = async (id, currentStatus) => {
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -94,9 +113,15 @@ export default function CouponsDashboardPage() {
         setCoupons(prev => 
           prev.map(c => c.id === id ? { ...c, isActive: !currentStatus } : c)
         );
+      } else {
+        const err = await response.json();
+        showAlert(formatErrorMessage(err), "Toggle Coupon Status", "error");
       }
     } catch (error) {
       console.error("Failed to toggle coupon status:", error);
+      showAlert(formatErrorMessage(error), "Toggle Coupon Status", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -104,6 +129,7 @@ export default function CouponsDashboardPage() {
     const confirmed = await showConfirm("Are you sure you want to delete this coupon?", "Delete Coupon");
     if (!confirmed) return;
 
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -118,11 +144,13 @@ export default function CouponsDashboardPage() {
         showToast("Coupon deleted successfully!", "success");
       } else {
         const err = await response.json();
-        showAlert(err.error || "Failed to delete coupon", "Delete Coupon", "error");
+        showAlert(formatErrorMessage(err), "Delete Coupon", "error");
       }
     } catch (error) {
       console.error("Failed to delete coupon:", error);
-      showAlert("Error deleting coupon", "Delete Coupon", "error");
+      showAlert(formatErrorMessage(error), "Delete Coupon", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -225,14 +253,14 @@ export default function CouponsDashboardPage() {
 
       {/* Add Coupon Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowAddModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={saving ? undefined : () => setShowAddModal(false)}>
           <div className="bg-white rounded-3xl w-full max-w-md p-8 space-y-6 shadow-2xl border" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center border-b pb-4">
               <h3 className="text-2xl font-black text-coffee-800 flex items-center gap-2">
                 <Sparkles className="h-6 w-6 text-[#1A4D2E]" />
                 Create Coupon
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-xl">
+              <button onClick={() => setShowAddModal(false)} disabled={saving} className="p-2 hover:bg-gray-100 rounded-xl disabled:opacity-50">
                 <X className="h-6 w-6 text-gray-500" />
               </button>
             </div>
@@ -243,10 +271,11 @@ export default function CouponsDashboardPage() {
                 <input
                   type="text"
                   required
+                  disabled={saving}
                   placeholder="e.g. SAVE10"
                   value={newCoupon.code}
                   onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none uppercase font-bold text-lg text-[#1A4D2E]"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none uppercase font-bold text-lg text-[#1A4D2E] disabled:opacity-50"
                 />
               </div>
 
@@ -257,18 +286,20 @@ export default function CouponsDashboardPage() {
                     type="number"
                     step="0.01"
                     required
+                    disabled={saving}
                     placeholder="10"
                     value={newCoupon.discount}
                     onChange={e => setNewCoupon({ ...newCoupon, discount: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none font-bold"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none font-bold disabled:opacity-50"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Discount Type *</label>
                   <select
                     value={newCoupon.type}
+                    disabled={saving}
                     onChange={e => setNewCoupon({ ...newCoupon, type: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none bg-white font-semibold"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none bg-white font-semibold disabled:opacity-50"
                   >
                     <option value="PERCENTAGE">Percentage (%)</option>
                     <option value="FIXED">Fixed Amount (₹)</option>
@@ -280,9 +311,10 @@ export default function CouponsDashboardPage() {
                 <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Expiry Date (Optional)</label>
                 <input
                   type="date"
+                  disabled={saving}
                   value={newCoupon.expiresAt}
                   onChange={e => setNewCoupon({ ...newCoupon, expiresAt: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none font-semibold text-gray-600"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#1A4D2E] outline-none font-semibold text-gray-600 disabled:opacity-50"
                 />
               </div>
 
@@ -290,15 +322,17 @@ export default function CouponsDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-3 font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200"
+                  disabled={saving}
+                  className="flex-1 py-3 font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl hover:bg-[#143D24]"
+                  disabled={saving}
+                  className="flex-1 py-3 font-bold text-white bg-[#1A4D2E] rounded-xl hover:bg-[#143D24] disabled:opacity-50"
                 >
-                  Create
+                  {saving ? "Creating..." : "Create"}
                 </button>
               </div>
             </form>

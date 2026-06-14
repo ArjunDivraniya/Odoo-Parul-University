@@ -7,8 +7,10 @@ import CloseSessionModal from "@/components/pos/CloseSessionModal";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { useCartStore } from "@/stores/cart-store";
 import CartSidebar from "@/components/pos/cart-sidebar";
+import { usePopup } from "@/context/PopupContext";
 
 export default function POSTerminalPage() {
+  const { showAlert } = usePopup();
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -21,6 +23,20 @@ export default function POSTerminalPage() {
   const [selectedTable, setSelectedTable] = useState(null);
   const [showCloseSessionModal, setShowCloseSessionModal] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+
+  const formatErrorMessage = (err) => {
+    if (!err) return "An unknown error occurred.";
+    if (typeof err === "string") return err;
+    if (typeof err.error === "string") return err.error;
+    if (Array.isArray(err.error)) {
+      return err.error.map(e => {
+        const fieldName = e.path && e.path.length > 0 ? e.path[e.path.length - 1] : "";
+        return `${fieldName ? fieldName + ": " : ""}${e.message}`;
+      }).join("\n");
+    }
+    if (err.message) return err.message;
+    return JSON.stringify(err);
+  };
 
   useEffect(() => {
     const activeSession = localStorage.getItem('activeSession');
@@ -298,7 +314,7 @@ export default function POSTerminalPage() {
               const token = localStorage.getItem('token');
               
               const response = await fetch(`${API_URL}/sessions/${session.id}/close`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${token}`
@@ -310,9 +326,13 @@ export default function POSTerminalPage() {
                 localStorage.removeItem('activeSession');
                 localStorage.removeItem('selectedTable');
                 window.location.href = '/pos/session';
+              } else {
+                const err = await response.json();
+                showAlert(`Failed to close session: ${formatErrorMessage(err)}`, "Close Session", "error");
               }
             } catch (error) {
               console.error('Error closing session:', error);
+              showAlert(`Failed to close session: ${formatErrorMessage(error)}`, "Close Session", "error");
             }
           }}
         />

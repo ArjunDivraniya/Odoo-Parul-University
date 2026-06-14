@@ -20,6 +20,20 @@ export default function POSSessionPage() {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closingCash, setClosingCash] = useState("");
 
+  const formatErrorMessage = (err) => {
+    if (!err) return "An unknown error occurred.";
+    if (typeof err === "string") return err;
+    if (typeof err.error === "string") return err.error;
+    if (Array.isArray(err.error)) {
+      return err.error.map(e => {
+        const fieldName = e.path && e.path.length > 0 ? e.path[e.path.length - 1] : "";
+        return `${fieldName ? fieldName + ": " : ""}${e.message}`;
+      }).join("\n");
+    }
+    if (err.message) return err.message;
+    return JSON.stringify(err);
+  };
+
   useEffect(() => {
     checkActiveSession();
   }, []);
@@ -158,12 +172,12 @@ export default function POSSessionPage() {
             }
           }
         } else {
-          showAlert(error.error || 'Failed to start session', 'Open Session', 'error');
+          showAlert(formatErrorMessage(error), 'Open Session', 'error');
         }
       }
     } catch (error) {
       console.error('Session start error:', error);
-      showAlert('Failed to start session', 'Open Session', 'error');
+      showAlert(formatErrorMessage(error), 'Open Session', 'error');
     } finally {
       setLoading(false);
     }
@@ -191,11 +205,12 @@ export default function POSSessionPage() {
         // Refresh terminals/state
         window.location.reload(); 
       } else {
-        showAlert("Failed to force close session.", "Force Close Session", "error");
+        const err = await response.json().catch(() => ({}));
+        showAlert(`Failed to force close session: ${formatErrorMessage(err)}`, "Force Close Session", "error");
       }
     } catch (e) {
       console.error("Force close error", e);
-      showAlert("Error closing session", "Force Close Session", "error");
+      showAlert(formatErrorMessage(e), "Force Close Session", "error");
     }
   };
 
@@ -229,11 +244,11 @@ export default function POSSessionPage() {
         fetchTerminals();
       } else {
         const error = await response.json();
-        showAlert(error.error || 'Failed to close session', 'Close Session', 'error');
+        showAlert(formatErrorMessage(error), 'Close Session', 'error');
       }
     } catch (error) {
       console.error('Session close error:', error);
-      showAlert('Failed to close session', 'Close Session', 'error');
+      showAlert(formatErrorMessage(error), 'Close Session', 'error');
     } finally {
       setLoading(false);
     }

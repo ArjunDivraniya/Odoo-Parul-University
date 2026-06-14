@@ -23,7 +23,22 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const formatErrorMessage = (err) => {
+    if (!err) return "An unknown error occurred.";
+    if (typeof err === "string") return err;
+    if (typeof err.error === "string") return err.error;
+    if (Array.isArray(err.error)) {
+      return err.error.map(e => {
+        const fieldName = e.path && e.path.length > 0 ? e.path[e.path.length - 1] : "";
+        return `${fieldName ? fieldName + ": " : ""}${e.message}`;
+      }).join("\n");
+    }
+    if (err.message) return err.message;
+    return JSON.stringify(err);
+  };
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -137,7 +152,7 @@ export default function ProductsPage() {
     setCurrentPage(1);
   };
 
-  const ProductModal = ({ product, onClose, onSave }) => {
+  const ProductModal = ({ product, onClose, onSave, saving }) => {
     // When editing, clean up the product object:
     // - Strip DB-only variant fields (id, productId, createdAt, updatedAt)
     // - Resolve categoryId from nested category object if needed
@@ -194,14 +209,14 @@ export default function ProductsPage() {
     };
 
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-beige-50 rounded-3xl max-w-2xl w-full max-h-[ 90vh] overflow-y-auto shadow-premium-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={saving ? undefined : onClose}>
+        <div className="bg-beige-50 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-premium-lg" onClick={(e) => e.stopPropagation()}>
           <div className="p-6 border-b border-gold-500/20">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-coffee-800">
                 {product ? 'Edit Product' : 'Add New Product'}
               </h2>
-              <button onClick={onClose} className="p-2 hover:bg-coffee-600/10 rounded-xl">
+              <button onClick={onClose} disabled={saving} className="p-2 hover:bg-coffee-600/10 rounded-xl disabled:opacity-50">
                 <X className="h-6 w-6 text-coffee-600" />
               </button>
             </div>
@@ -215,7 +230,8 @@ export default function ProductsPage() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
-                className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white"
+                disabled={saving}
+                className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white disabled:opacity-50"
               />
             </div>
 
@@ -225,7 +241,8 @@ export default function ProductsPage() {
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white"
+                disabled={saving}
+                className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white disabled:opacity-50"
               />
             </div>
 
@@ -238,7 +255,8 @@ export default function ProductsPage() {
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   required
-                  className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white"
+                  disabled={saving}
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white disabled:opacity-50"
                 />
               </div>
 
@@ -249,7 +267,8 @@ export default function ProductsPage() {
                   step="0.01"
                   value={formData.tax || '0'}
                   onChange={(e) => setFormData({ ...formData, tax: e.target.value })}
-                  className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white"
+                  disabled={saving}
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white disabled:opacity-50"
                 />
               </div>
             </div>
@@ -262,7 +281,8 @@ export default function ProductsPage() {
                   <button
                     type="button"
                     onClick={() => setCategoryMode('select')}
-                    className={`px-3 py-1 transition ${
+                    disabled={saving}
+                    className={`px-3 py-1 transition disabled:opacity-50 ${
                       categoryMode === 'select'
                         ? 'bg-[#1A4D2E] text-white'
                         : 'bg-white text-coffee-700 hover:bg-coffee-50'
@@ -273,7 +293,8 @@ export default function ProductsPage() {
                   <button
                     type="button"
                     onClick={() => setCategoryMode('new')}
-                    className={`px-3 py-1 transition ${
+                    disabled={saving}
+                    className={`px-3 py-1 transition disabled:opacity-50 ${
                       categoryMode === 'new'
                         ? 'bg-[#1A4D2E] text-white'
                         : 'bg-white text-coffee-700 hover:bg-coffee-50'
@@ -289,7 +310,8 @@ export default function ProductsPage() {
                   value={formData.categoryId}
                   onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                   required
-                  className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white"
+                  disabled={saving}
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none bg-white disabled:opacity-50"
                 >
                   <option value="">Select a category...</option>
                   {categories.map(cat => (
@@ -304,7 +326,8 @@ export default function ProductsPage() {
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-2xl border-2 border-[#1A4D2E]/40 focus:border-[#1A4D2E] focus:outline-none bg-white"
+                    disabled={saving}
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-[#1A4D2E]/40 focus:border-[#1A4D2E] focus:outline-none bg-white disabled:opacity-50"
                   />
                   <p className="text-xs text-[#5F6F65] mt-1.5">
                     ✨ This will create a new category and assign it to the product.
@@ -319,7 +342,8 @@ export default function ProductsPage() {
                   type="checkbox"
                   checked={formData.isAvailable}
                   onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
-                  className="w-5 h-5 rounded border-coffee-600/20"
+                  disabled={saving}
+                  className="w-5 h-5 rounded border-coffee-600/20 disabled:opacity-50"
                 />
                 <span className="text-sm font-semibold text-coffee-700">Available for Sale</span>
               </label>
@@ -329,7 +353,8 @@ export default function ProductsPage() {
                   type="checkbox"
                   checked={formData.sendToKitchen}
                   onChange={(e) => setFormData({ ...formData, sendToKitchen: e.target.checked })}
-                  className="w-5 h-5 rounded border-coffee-600/20"
+                  disabled={saving}
+                  className="w-5 h-5 rounded border-coffee-600/20 disabled:opacity-50"
                 />
                 <span className="text-sm font-semibold text-coffee-700">Send to Kitchen</span>
               </label>
@@ -344,7 +369,8 @@ export default function ProductsPage() {
                   placeholder="https://images.unsplash.com/..."
                   value={formData.imageUrl || ''}
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="flex-1 input-field"
+                  disabled={saving}
+                  className="flex-1 input-field disabled:opacity-50"
                 />
                 {formData.imageUrl && (
                   <div className="h-10 w-10 rounded-lg overflow-hidden border border-gray-200">
@@ -362,7 +388,8 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={handleAddVariant}
-                  className="text-xs flex items-center gap-1 text-coffee-600 hover:text-coffee-800 font-semibold"
+                  disabled={saving}
+                  className="text-xs flex items-center gap-1 text-coffee-600 hover:text-coffee-800 font-semibold disabled:opacity-50"
                 >
                   <Plus className="h-3 w-3" /> Add Variant
                 </button>
@@ -376,7 +403,8 @@ export default function ProductsPage() {
                       placeholder="Name (e.g. Large)"
                       value={variant.name}
                       onChange={(e) => handleVariantChange(index, "name", e.target.value)}
-                      className="flex-[2] px-3 py-2 rounded-xl border border-coffee-600/20 text-sm"
+                      disabled={saving}
+                      className="flex-[2] px-3 py-2 rounded-xl border border-coffee-600/20 text-sm disabled:opacity-50"
                       required
                     />
                     <div className="flex-1 relative">
@@ -387,13 +415,15 @@ export default function ProductsPage() {
                         placeholder="Extra Price"
                         value={variant.extraPrice}
                         onChange={(e) => handleVariantChange(index, "extraPrice", e.target.value)}
-                        className="w-full pl-6 pr-3 py-2 rounded-xl border border-coffee-600/20 text-sm"
+                        disabled={saving}
+                        className="w-full pl-6 pr-3 py-2 rounded-xl border border-coffee-600/20 text-sm disabled:opacity-50"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => handleRemoveVariant(index)}
-                      className="p-2 text-red-400 hover:text-red-600"
+                      disabled={saving}
+                      className="p-2 text-red-400 hover:text-red-600 disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -406,10 +436,10 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <button type="submit" className="flex-1 btn-primary">
-                {product ? 'Update Product' : 'Add Product'}
+              <button type="submit" disabled={saving} className="flex-1 btn-primary disabled:opacity-50">
+                {saving ? (editingProduct ? 'Updating...' : 'Adding...') : (product ? 'Update Product' : 'Add Product')}
               </button>
-              <button type="button" onClick={onClose} className="flex-1 btn-outline">
+              <button type="button" onClick={onClose} disabled={saving} className="flex-1 btn-outline disabled:opacity-50">
                 Cancel
               </button>
             </div>
@@ -420,6 +450,7 @@ export default function ProductsPage() {
   };
 
   const handleSaveProduct = async (formData) => {
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -439,7 +470,7 @@ export default function ProductsPage() {
 
         if (!catResponse.ok) {
           const err = await catResponse.json();
-          showAlert(`Failed to create category: ${err.error || 'Unknown error'}`, "Category Creation", "error");
+          showAlert(`Failed to create category: ${formatErrorMessage(err)}`, "Category Creation", "error");
           return;
         }
 
@@ -491,11 +522,13 @@ export default function ProductsPage() {
       } else {
         const err = await response.json();
         console.error("Backend Error:", err);
-        showAlert(`Failed to save product: ${err.error || 'Unknown error'}`, "Save Product", "error");
+        showAlert(`Failed to save product: ${formatErrorMessage(err)}`, "Save Product", "error");
       }
     } catch (error) {
       console.error('Failed to save product:', error);
-      showAlert(`Failed to save product: ${error.message}`, "Save Product", "error");
+      showAlert(`Failed to save product: ${formatErrorMessage(error)}`, "Save Product", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -503,6 +536,7 @@ export default function ProductsPage() {
     const confirmed = await showConfirm('Are you sure you want to delete this product?', 'Delete Product');
     if (!confirmed) return;
 
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -520,14 +554,16 @@ export default function ProductsPage() {
         const err = await response.json();
         console.error("Backend Error:", err);
         showAlert(
-          `Failed to delete product: ${err.error || 'Unknown error'}\n\n(Note: You cannot delete products that are part of existing orders.)`,
+          `Failed to delete product: ${formatErrorMessage(err)}\n\n(Note: You cannot delete products that are part of existing orders.)`,
           "Delete Product",
           "error"
         );
       }
     } catch (error) {
       console.error('Failed to delete product:', error);
-      showAlert(`Failed to delete product: ${error.message}`, "Delete Product", "error");
+      showAlert(`Failed to delete product: ${formatErrorMessage(error)}`, "Delete Product", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
