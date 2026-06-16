@@ -12,11 +12,21 @@ import {
   Eye,
   Printer,
   Download,
-  Sparkles,
   Coffee,
   Activity,
   CheckCircle2,
   DollarSign,
+  ChevronDown,
+  Clock,
+  Package,
+  ArrowUpRight,
+  ArrowDownRight,
+  Mail,
+  Phone,
+  MapPin,
+  Hash,
+  ShoppingBag,
+  User,
 } from "lucide-react";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 
@@ -87,16 +97,58 @@ export default function OrdersPage() {
     setFilteredOrders(filtered);
   };
 
-  const getStatusBadgeClass = (status) => {
-    const statusClasses = {
-      DRAFT: "bg-cream-100 text-coffee-700 border border-cream-200",
-      SENT: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-      PREPARING: "bg-amber-50 text-amber-700 border border-amber-200",
-      COMPLETED: "bg-sage-50 text-sage-700 border border-sage-200",
-      PAID: "bg-sage-500/10 text-sage-700 border border-sage-200/40",
-      CANCELLED: "bg-red-50 text-red-600 border border-red-100",
+  const getStatusConfig = (status) => {
+    const configs = {
+      DRAFT: {
+        bg: "bg-[#F5EFE6]",
+        text: "text-[#8C7B6B]",
+        border: "border-[#E8DFD3]",
+        dot: "bg-[#8C7B6B]",
+        label: "Draft",
+      },
+      SENT: {
+        bg: "bg-[#E8F4FD]",
+        text: "text-[#1E6FA0]",
+        border: "border-[#B8DCF0]",
+        dot: "bg-[#1E6FA0]",
+        label: "Sent",
+      },
+      PREPARING: {
+        bg: "bg-[#FFF4E5]",
+        text: "text-[#B8700A]",
+        border: "border-[#FFE0A3]",
+        dot: "bg-[#E68A00]",
+        label: "Preparing",
+      },
+      COMPLETED: {
+        bg: "bg-[#E8F5E9]",
+        text: "text-[#2E7D32]",
+        border: "border-[#A5D6A7]",
+        dot: "bg-[#2E7D32]",
+        label: "Completed",
+      },
+      PAID: {
+        bg: "bg-[#E0F2F1]",
+        text: "text-[#00695C]",
+        border: "border-[#80CBC4]",
+        dot: "bg-[#00695C]",
+        label: "Paid",
+      },
+      CANCELLED: {
+        bg: "bg-[#FFEBEE]",
+        text: "text-[#C62828]",
+        border: "border-[#EF9A9A]",
+        dot: "bg-[#C62828]",
+        label: "Cancelled",
+      },
     };
-    return statusClasses[status] || "bg-gray-100 text-gray-700 border border-gray-200";
+    return configs[status] || {
+      bg: "bg-gray-50",
+      text: "text-gray-600",
+      border: "border-gray-200",
+      dot: "bg-gray-400",
+      label: status,
+    };
   };
 
   const currencyFormatter = useMemo(
@@ -138,33 +190,34 @@ export default function OrdersPage() {
       id: "total",
       label: "Total Orders",
       value: statusSummary.total || 0,
-      hint: "Across every channel",
+      hint: "All orders today",
       icon: Coffee,
-      iconClasses: "bg-white/80 text-[#1A4D2E]",
+      iconBg: "bg-[#F3EDE5]",
+      iconColor: "text-[#6B4423]",
+      trendUp: true,
+      trend: "+12%",
     },
     {
       id: "progress",
       label: "In Progress",
       value: progressOrders,
-      hint: `${statusSummary.PREPARING || 0} in kitchen, ${statusSummary.SENT || 0} en route`,
+      hint: `${statusSummary.PREPARING || 0} preparing · ${statusSummary.SENT || 0} sent`,
       icon: Activity,
-      iconClasses: "bg-[#FDF2E9] text-[#D47C2F]",
-      progress:
-        statusSummary.total > 0
-          ? Math.min(100, (progressOrders / statusSummary.total) * 100)
-          : 0,
+      iconBg: "bg-[#FFF4E5]",
+      iconColor: "text-[#E68A00]",
+      trendUp: true,
+      trend: "Live",
     },
     {
       id: "completed",
       label: "Completed",
       value: completedOrders,
-      hint: `${statusSummary.COMPLETED || 0} served, ${statusSummary.PAID || 0} paid`,
+      hint: `${statusSummary.COMPLETED || 0} served · ${statusSummary.PAID || 0} paid`,
       icon: CheckCircle2,
-      iconClasses: "bg-[#E8F5E9] text-[#1A4D2E]",
-      progress:
-        statusSummary.total > 0
-          ? Math.min(100, (completedOrders / statusSummary.total) * 100)
-          : 0,
+      iconBg: "bg-[#E8F5E9]",
+      iconColor: "text-[#2E7D32]",
+      trendUp: true,
+      trend: "+8%",
     },
     {
       id: "revenue",
@@ -172,14 +225,15 @@ export default function OrdersPage() {
       value: formatCurrency(statusSummary.revenue || 0),
       hint: "Gross sales generated",
       icon: DollarSign,
-      iconClasses: "bg-[#F3F1E2] text-[#B47D37]",
+      iconBg: "bg-[#FFF8E1]",
+      iconColor: "text-[#F9A825]",
+      trendUp: true,
+      trend: "+15%",
     },
   ];
 
 
-
-  // ... existing imports ...
-
+  // Order Details Modal
   const OrderDetailsModal = ({ order, onClose }) => {
     if (!order) return null;
 
@@ -266,10 +320,6 @@ export default function OrdersPage() {
       }
     };
 
-
-
-    // ... existing imports ...
-
     const handleEmailReceipt = async () => {
       let recipient = order.customerEmail;
 
@@ -283,28 +333,20 @@ export default function OrdersPage() {
       const PUBLIC_KEY = "W0595iJ-qNi2bVbxR";
       const TEMPLATE_ID = "template_u4syz79";
 
-      // Matching the structure from your screenshot (Default EmailJS eCommerce template)
       const templateParams = {
-        email: recipient,              // Matches 'To Email: {{email}}'
-        order_id: order.orderNumber,   // Matches 'Subject: ... #{{order_id}}'
-
-        // Loop for {{#orders}} ... {{/orders}}
+        email: recipient,
+        order_id: order.orderNumber,
         orders: order.items.map(item => ({
-          name: item.productName,    // Matches {{name}}
-          price: Number(item.price).toFixed(2), // Matches ${{price}} - keeping number only, template adds symbol? Or add symbol here? 
-          // If template expects symbol, I should send it. User wants ₹.
+          name: item.productName,
+          price: Number(item.price).toFixed(2),
           price_formatted: `₹${Number(item.price).toFixed(2)}`,
-          units: item.quantity       // Matches QTY: {{units}}
+          units: item.quantity
         })),
-
-        // Matches {{cost.total}}, {{cost.tax}}
         cost: {
           shipping: "0.00",
-          tax: (Number(order.totalAmount) - order.items.reduce((s, i) => s + (Number(i.price) * i.quantity), 0)).toFixed(2), // Approx tax
+          tax: (Number(order.totalAmount) - order.items.reduce((s, i) => s + (Number(i.price) * i.quantity), 0)).toFixed(2),
           total: Number(order.totalAmount).toFixed(2)
         },
-
-        // Fallback message if using a simple template
         message: `Receipt for Order ${order.orderNumber}. Total: ₹${Number(order.totalAmount).toFixed(2)}`
       };
 
@@ -319,96 +361,132 @@ export default function OrdersPage() {
       }
     };
 
+    const statusConfig = getStatusConfig(order.status);
+    const subtotal = order.items?.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0) || 0;
+    const tax = subtotal * 0.09;
+
     return (
       <div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         onClick={onClose}
       >
         <div
-          className="bg-gradient-to-b from-cream-50 via-white to-beige-50 rounded-[32px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_45px_90px_rgba(14,60,39,0.25)]"
+          className="bg-white rounded-[32px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_25px_80px_rgba(62,43,33,0.18)]"
           onClick={(e) => e.stopPropagation()}
+          style={{ scrollbarWidth: 'none' }}
         >
           {/* Header */}
-          <div className="p-6 border-b border-gold-500/20 sticky top-0 bg-white/80 backdrop-blur">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-2xl font-bold text-coffee-800">Order Details</h2>
+          <div className="p-8 pb-6 border-b border-[#EBE4D5]/60 sticky top-0 bg-white rounded-t-[32px] z-10">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-[#F3EDE5] flex items-center justify-center">
+                    <Package className="h-5 w-5 text-[#6B4423]" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-[#3E2B21]">Order Details</h2>
+                    <p className="text-sm text-[#3E2B21]/50 font-medium">#{order.orderNumber}</p>
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-coffee-600/10 rounded-xl transition-colors"
+                className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors"
               >
-                <X className="h-6 w-6 text-coffee-600" />
+                <X className="h-5 w-5 text-[#6B4423]" />
               </button>
             </div>
-            <p className="text-coffee-600/60">#{order.orderNumber}</p>
           </div>
 
-          {/* Order Info */}
-          <div className="p-6 space-y-6">
-            {/* Status & Table */}
+          {/* Body */}
+          <div className="p-8 space-y-8">
+            {/* Meta Cards */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-coffee-600/60 mb-1">Status</p>
+              <div className="rounded-[20px] bg-[#FDFCF7] border border-[#EBE4D5]/60 p-4">
+                <p className="text-[11px] font-bold text-[#3E2B21]/40 tracking-wider uppercase mb-2">Status</p>
                 <span
-                  className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadgeClass(
-                    order.status
-                  )}`}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${statusConfig.bg} ${statusConfig.text} border ${statusConfig.border}`}
                 >
-                  {order.status}
+                  <span className={`h-1.5 w-1.5 rounded-full ${statusConfig.dot}`} />
+                  {statusConfig.label}
                 </span>
               </div>
-              <div>
-                {order.table && (
-                  <div className="mb-2">
-                    <p className="text-sm text-coffee-600/60 mb-1">Table</p>
-                    <p className="text-lg font-semibold text-coffee-800">{order.table.name}</p>
+              {order.table && (
+                <div className="rounded-[20px] bg-[#FDFCF7] border border-[#EBE4D5]/60 p-4">
+                  <p className="text-[11px] font-bold text-[#3E2B21]/40 tracking-wider uppercase mb-2">Table</p>
+                  <p className="text-lg font-black text-[#3E2B21]">{order.table.name}</p>
+                </div>
+              )}
+              {order.customerName && (
+                <div className="rounded-[20px] bg-[#FDFCF7] border border-[#EBE4D5]/60 p-4 col-span-2">
+                  <p className="text-[11px] font-bold text-[#3E2B21]/40 tracking-wider uppercase mb-2">Customer</p>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-[#3E2B21] flex items-center justify-center text-white text-sm font-bold">
+                      {order.customerName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-bold text-[#3E2B21]">{order.customerName}</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        {order.customerEmail && (
+                          <span className="flex items-center gap-1 text-xs text-[#3E2B21]/50">
+                            <Mail className="h-3 w-3" /> {order.customerEmail}
+                          </span>
+                        )}
+                        {order.customerMobile && (
+                          <span className="flex items-center gap-1 text-xs text-[#3E2B21]/50">
+                            <Phone className="h-3 w-3" /> {order.customerMobile}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-                {order.customerName && (
-                  <div>
-                    <p className="text-sm text-coffee-600/60 mb-1">Customer</p>
-                    <p className="text-lg font-semibold text-coffee-800">{order.customerName}</p>
-                    <p className="text-sm text-coffee-600">{order.customerEmail}</p>
-                    {order.customerMobile && (
-                      <p className="text-sm text-coffee-600">{order.customerMobile}</p>
-                    )}
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Items */}
             <div>
-              <h3 className="text-lg font-bold text-coffee-800 mb-3">Order Items</h3>
-              <div className="space-y-2">
+              <h3 className="text-[13px] font-bold text-[#3E2B21]/50 tracking-wider uppercase mb-4">Order Items</h3>
+              <div className="space-y-3">
                 {order.items?.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-4 rounded-2xl border border-gold-500/20 bg-white"
+                    className="flex items-center justify-between p-4 rounded-[20px] bg-[#FDFCF7] border border-[#EBE4D5]/60 hover:border-[#EBE4D5] transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-coffee-600/10 rounded-xl flex items-center justify-center font-bold text-coffee-700">
-                        {item.quantity}x
+                    <div className="flex items-center gap-4">
+                      <div className="h-11 w-11 bg-[#F3EDE5] rounded-[14px] flex items-center justify-center">
+                        <span className="text-sm font-black text-[#6B4423]">{item.quantity}×</span>
                       </div>
                       <div>
-                        <p className="font-semibold text-coffee-800">{item.productName}</p>
+                        <p className="font-bold text-[#3E2B21] text-[15px]">{item.productName}</p>
                         {item.variantName && (
-                          <p className="text-sm text-coffee-600/60">{item.variantName}</p>
+                          <p className="text-xs text-[#3E2B21]/40 font-medium mt-0.5">{item.variantName}</p>
                         )}
                       </div>
                     </div>
-                    <p className="font-bold text-coffee-800">${(Number(item.price) * item.quantity).toFixed(2)}</p>
+                    <p className="font-black text-[#3E2B21] text-[15px]">₹{(Number(item.price) * item.quantity).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Total */}
-            <div className="pt-4 border-t border-gold-500/20">
-              <div className="flex items-center justify-between text-xl rounded-2xl bg-beige-100 px-4 py-3">
-                <span className="font-semibold text-coffee-700">Total Amount</span>
-                <span className="font-bold text-coffee-800">
-                  {formatCurrency(Number(order.totalAmount))}
-                </span>
+            {/* Totals */}
+            <div className="rounded-[24px] bg-[#FDFCF7] border border-[#EBE4D5]/60 p-5 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[#3E2B21]/50 font-medium">Subtotal</span>
+                <span className="font-bold text-[#3E2B21]">₹{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[#3E2B21]/50 font-medium">Tax (9%)</span>
+                <span className="font-bold text-[#3E2B21]">₹{tax.toFixed(2)}</span>
+              </div>
+              <div className="border-t border-[#EBE4D5]/60 pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-[#3E2B21]">Total</span>
+                  <span className="text-xl font-black text-[#3E2B21]">
+                    {formatCurrency(Number(order.totalAmount))}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -416,17 +494,17 @@ export default function OrdersPage() {
             <div className="flex gap-3">
               <button
                 onClick={generateReceipt}
-                className="flex-1 btn-primary flex items-center justify-center gap-2 py-3 rounded-xl bg-coffee-800 text-white font-bold hover:bg-coffee-900 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)]"
               >
-                <Printer className="h-5 w-5" />
+                <Printer className="h-4.5 w-4.5" />
                 Print Receipt
               </button>
               <button
                 onClick={handleEmailReceipt}
-                className="flex-1 btn-outline flex items-center justify-center gap-2 py-3 rounded-xl border border-coffee-800 text-coffee-800 font-bold hover:bg-coffee-50 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors"
               >
-                <Download className="h-5 w-5" />
-                Export / Email
+                <Mail className="h-4.5 w-4.5" />
+                Email Receipt
               </button>
             </div>
           </div>
@@ -445,83 +523,87 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
-      <section
-        className="relative overflow-hidden rounded-[42px] text-white p-8 shadow-[0_45px_120px_rgba(10,46,29,0.45)] border border-white/10"
-        style={{
-          backgroundImage: `linear-gradient(135deg, #163d28ff 0%, #1A4D2E 60%, #2F7A46 100%)`,
-        }}
 
-      >
-        <div className="absolute inset-0 opacity-70 pointer-events-none">
-          <span className="absolute -left-16 top-1/4 h-48 w-48 rounded-full bg-white/15 blur-[120px]" />
-          <span className="absolute right-8 top-6 h-32 w-32 rounded-full bg-[#8DE0B0]/30 blur-[90px]" />
-          <span className="absolute right-0 bottom-0 h-56 w-56 rounded-full bg-[#F4B860]/25 blur-[130px]" />
-        </div>
-
-        <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-center">
-          <div className="flex-1 space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-semibold">
-              <Sparkles className="h-4 w-4" /> Live service overview
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  HERO SECTION — warm cream with coffee illustration   */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="flex flex-col xl:flex-row gap-6">
+        {/* Left — Hero Text */}
+        <div className="relative flex-1 bg-[#FDFCF7] rounded-[40px] p-8 lg:p-12 shadow-[0_4px_20px_rgba(62,43,33,0.02)] border border-[#EBE4D5]/60 overflow-hidden flex flex-col justify-center min-h-[220px]">
+          <div className="relative z-10 max-w-lg space-y-5">
+            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#FCF8F2] text-[#3E2B21] text-sm font-semibold border border-[#EBE4D5]">
+              <ShoppingBag className="h-4 w-4" /> Orders Management
             </div>
+
             <div>
-              <h1 className="text-4xl font-black tracking-tight">Orders Management</h1>
-              <p className="text-white/80 mt-2 text-lg">
-                Keep every table, takeaway, and online order flowing through the bar with ease.
+              <h1 className="text-3xl lg:text-[44px] font-black leading-[1.15] text-[#3E2B21] font-serif tracking-tight">
+                Keep every order flowing smoothly.
+              </h1>
+              <p className="text-[#3E2B21]/60 text-base mt-3 font-medium leading-relaxed max-w-md">
+                Monitor dine-in, takeaway, and online orders in real time. Every table, every ticket.
               </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                <p className="text-sm uppercase tracking-[0.3em] text-white/70">Live orders</p>
-                <p className="text-3xl font-black">{progressOrders}</p>
-                <p className="text-xs text-white/70 mt-1">Brewing & on the way</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                <p className="text-sm uppercase tracking-[0.3em] text-white/70">Completed</p>
-                <p className="text-3xl font-black">{completedOrders}</p>
-                <p className="text-xs text-white/70 mt-1">Served with a smile</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                <p className="text-sm uppercase tracking-[0.3em] text-white/70">Revenue</p>
-                <p className="text-3xl font-black">{formatCurrency(statusSummary.revenue)}</p>
-                <p className="text-xs text-white/70 mt-1">Today&apos;s takings</p>
-              </div>
             </div>
           </div>
 
-          <div className="w-full max-w-sm rounded-[32px] bg-white/10 border border-white/20 p-6 backdrop-blur">
-            <div className="flex items-center justify-between text-sm text-white/80">
-              <span className="inline-flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {serviceDate}
-              </span>
-              <button className="px-4 py-2 rounded-full bg-white text-[#1A4D2E] text-xs font-semibold shadow-lg flex items-center gap-2">
-                <Download className="h-4 w-4" /> Export
-              </button>
-            </div>
+          {/* Decorative coffee image */}
+          <img
+            src="/hero-coffee.png"
+            alt="Coffee"
+            className="absolute -right-16 -bottom-10 h-[130%] object-contain opacity-30 pointer-events-none"
+          />
+        </div>
 
-            <div className="mt-6 space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-white/60">Focus</p>
-                <p className="text-lg font-semibold">Dine-in & takeaway</p>
+        {/* Right — Date + Quick Actions */}
+        <div className="w-full xl:w-[380px] flex flex-col gap-5">
+          <div className="bg-[#FDFCF7] rounded-[32px] p-6 shadow-[0_4px_20px_rgba(62,43,33,0.02)] border border-[#EBE4D5]/60 flex items-center justify-between text-sm text-[#3E2B21] font-semibold">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-[#3E2B21]/70" />
+              <span>{serviceDate}</span>
+            </div>
+            <button className="px-4 py-2 rounded-full bg-[#3E2B21] text-white text-xs font-bold shadow-md flex items-center gap-2 hover:bg-[#2C1810] transition-colors">
+              <Download className="h-3.5 w-3.5" /> Export
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 flex-1">
+            <div className="rounded-[28px] bg-white border border-[#EBE4D5] p-5 shadow-[0_4px_20px_rgba(62,43,33,0.02)] flex flex-col justify-center">
+              <p className="text-[#3E2B21]/50 text-[12px] font-bold tracking-wide">Live Orders</p>
+              <div className="flex items-end justify-between mt-2">
+                <p className="text-[28px] font-black text-[#3E2B21] leading-none">{progressOrders}</p>
+                <div className="h-9 w-9 rounded-full bg-[#FFF4E5] flex items-center justify-center text-[#E68A00]">
+                  <Activity className="h-4 w-4" />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                  <p className="text-white/70">Awaiting pickup</p>
-                  <p className="text-2xl font-bold">{statusSummary.SENT || 0}</p>
+              <p className="text-[10px] text-[#3E2B21]/40 font-medium mt-2">Brewing & on the way</p>
+            </div>
+            <div className="rounded-[28px] bg-white border border-[#EBE4D5] p-5 shadow-[0_4px_20px_rgba(62,43,33,0.02)] flex flex-col justify-center">
+              <p className="text-[#3E2B21]/50 text-[12px] font-bold tracking-wide">Completed</p>
+              <div className="flex items-end justify-between mt-2">
+                <p className="text-[28px] font-black text-[#3E2B21] leading-none">{completedOrders}</p>
+                <div className="h-9 w-9 rounded-full bg-[#E8F5E9] flex items-center justify-center text-[#2E7D32]">
+                  <CheckCircle2 className="h-4 w-4" />
                 </div>
-                <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                  <p className="text-white/70">Cancelled</p>
-                  <p className="text-2xl font-bold">{statusSummary.CANCELLED || 0}</p>
-                </div>
+              </div>
+              <p className="text-[10px] text-[#3E2B21]/40 font-medium mt-2">Served with a smile</p>
+            </div>
+          </div>
+
+          <div className="rounded-[28px] bg-white border border-[#EBE4D5] p-5 shadow-[0_4px_20px_rgba(62,43,33,0.02)]">
+            <p className="text-[#3E2B21]/50 text-[12px] font-bold tracking-wide">Revenue Today</p>
+            <div className="flex items-end justify-between mt-2">
+              <p className="text-[28px] font-black text-[#3E2B21] leading-none">{formatCurrency(statusSummary.revenue)}</p>
+              <div className="flex items-center gap-1 text-green-600">
+                <ArrowUpRight className="h-4 w-4" />
+                <span className="text-xs font-bold">+15%</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Quick stats */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  QUICK STATS — horizontal cards                       */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {quickStats.map((stat) => {
           const Icon = stat.icon;
@@ -533,26 +615,31 @@ export default function OrdersPage() {
           return (
             <div
               key={stat.id}
-              className="rounded-[30px] bg-white/90 backdrop-blur border border-white shadow-[0_25px_60px_rgba(26,77,46,0.08)] p-5 transition duration-300 hover:-translate-y-1"
+              className="rounded-[28px] bg-white p-5 shadow-[0_4px_20px_rgba(62,43,33,0.02)] border border-[#EBE4D5]/60 hover:shadow-[0_8px_30px_rgba(62,43,33,0.06)] transition-all duration-300"
             >
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-[#5F6F65]/70">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-[12px] font-bold text-[#3E2B21]/50 tracking-wide">
                     {stat.label}
                   </p>
-                  <p className="text-3xl font-black text-[#1A4D2E] mt-2">{displayValue}</p>
+                  <p className="text-2xl font-black text-[#3E2B21] mt-1">{displayValue}</p>
+                  <p className="text-[11px] text-[#3E2B21]/40 font-medium mt-1.5">{stat.hint}</p>
                 </div>
-                <span className={`h-12 w-12 rounded-2xl flex items-center justify-center ${stat.iconClasses}`}>
-                  <Icon className="h-5 w-5" />
-                </span>
+                <div className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 ${stat.iconBg}`}>
+                  <Icon className={`h-5 w-5 ${stat.iconColor}`} />
+                </div>
               </div>
-              <p className="text-sm text-[#5F6F65] mt-3">{stat.hint}</p>
-              {typeof stat.progress === "number" && (
-                <div className="mt-4 h-1.5 rounded-full bg-[#E6E9E5] overflow-hidden">
-                  <span
-                    className="block h-full rounded-full bg-[#1A4D2E]"
-                    style={{ width: `${stat.progress}%` }}
-                  />
+              {stat.trend && (
+                <div className="flex items-center gap-1.5 mt-3">
+                  {stat.trendUp ? (
+                    <ArrowUpRight className="h-3.5 w-3.5 text-green-600" />
+                  ) : (
+                    <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
+                  )}
+                  <span className={`text-[11px] font-bold ${stat.trendUp ? "text-green-600" : "text-red-500"}`}>
+                    {stat.trend}
+                  </span>
+                  <span className="text-[11px] text-[#3E2B21]/40 font-medium">vs yesterday</span>
                 </div>
               )}
             </div>
@@ -560,45 +647,48 @@ export default function OrdersPage() {
         })}
       </section>
 
-      {/* Filters & Search */}
-      <section className="rounded-[36px] bg-white/95 backdrop-blur border border-white shadow-[0_30px_70px_rgba(26,77,46,0.08)] p-6 space-y-6">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  FILTERS & SEARCH                                     */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="rounded-[32px] bg-white border border-[#EBE4D5]/60 shadow-[0_4px_20px_rgba(62,43,33,0.02)] p-6 space-y-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.4em] text-[#1A4D2E]/80">
+          <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-[#3E2B21]/50">
             <Filter className="h-4 w-4" /> Filters
           </div>
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-coffee-600/40 h-5 w-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#3E2B21]/30 h-5 w-5" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by order number, table, or customer"
-              className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-coffee-600/20 focus:border-coffee-600 focus:outline-none transition-colors bg-white"
+              placeholder="Search by order number, table, or customer..."
+              className="w-full pl-12 pr-4 py-3.5 rounded-[20px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 transition-all bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] placeholder:text-[#3E2B21]/30"
             />
           </div>
-          <div className="inline-flex items-center gap-2 rounded-2xl border border-coffee-100 px-4 py-3 text-sm text-[#5F6F65]">
-            <Calendar className="h-4 w-4" /> Service window: Today
+          <div className="inline-flex items-center gap-2 rounded-[18px] border border-[#EBE4D5] px-5 py-3.5 text-sm text-[#3E2B21]/60 font-medium bg-[#FDFCF7]">
+            <Calendar className="h-4 w-4" /> Today
           </div>
         </div>
 
+        {/* Status Pill Filters */}
         <div className="flex flex-wrap gap-2">
           {statusOptions.map((status) => {
             const isActive = statusFilter === status;
-            const label = status === "all" ? "All" : status;
+            const label = status === "all" ? "All" : getStatusConfig(status).label;
             const count = status === "all" ? statusSummary.total : statusSummary[status] || 0;
 
             return (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2 rounded-full border text-sm font-semibold flex items-center gap-2 transition ${isActive
-                  ? "bg-[#1A4D2E] text-white border-transparent shadow"
-                  : "bg-white text-[#1A4D2E] border-coffee-100 hover:border-coffee-200"
+                className={`px-4 py-2 rounded-full text-[13px] font-bold flex items-center gap-2 transition-all duration-200 ${isActive
+                  ? "bg-[#3E2B21] text-white shadow-[0_4px_12px_rgba(62,43,33,0.2)]"
+                  : "bg-[#FDFCF7] text-[#3E2B21]/70 border border-[#EBE4D5] hover:border-[#3E2B21]/20 hover:text-[#3E2B21]"
                   }`}
               >
                 {label}
                 <span
-                  className={`h-6 min-w-6 rounded-full text-xs flex items-center justify-center ${isActive ? "bg-white/20" : "bg-coffee-50"
+                  className={`h-5 min-w-5 rounded-full text-[10px] flex items-center justify-center px-1.5 font-bold ${isActive ? "bg-white/20 text-white" : "bg-[#F3EDE5] text-[#3E2B21]/50"
                     }`}
                 >
                   {count}
@@ -608,32 +698,36 @@ export default function OrdersPage() {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-coffee-100 pt-4 text-sm text-[#5F6F65]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EBE4D5]/60 pt-4 text-sm text-[#3E2B21]/50 font-medium">
           <p>
-            Showing <span className="font-semibold text-[#1A4D2E]">{filteredOrders.length}</span> of
-            <span className="font-semibold text-[#1A4D2E]"> {orders.length}</span> orders
+            Showing <span className="font-bold text-[#3E2B21]">{filteredOrders.length}</span> of
+            <span className="font-bold text-[#3E2B21]"> {orders.length}</span> orders
           </p>
-          <span className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-cream-200 text-[#1A4D2E] text-xs font-semibold">
-            {statusFilter === "all" ? "All orders" : `${statusFilter} queue`}
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F5EFE6] text-[#3E2B21] text-xs font-bold">
+            {statusFilter === "all" ? "All orders" : `${getStatusConfig(statusFilter).label} queue`}
           </span>
         </div>
       </section>
 
-      {/* Orders Table */}
-      <section className="rounded-[40px] bg-white/95 backdrop-blur border border-white shadow-[0_35px_80px_rgba(26,77,46,0.08)] overflow-hidden">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  ORDERS TABLE                                         */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="rounded-[32px] bg-white border border-[#EBE4D5]/60 shadow-[0_4px_20px_rgba(62,43,33,0.02)] overflow-hidden">
         {filteredOrders.length === 0 ? (
-          <div className="text-center py-20 space-y-3">
-            <Coffee className="h-10 w-10 text-coffee-200 mx-auto" />
-            <p className="text-coffee-600/70 text-lg">No orders match this view</p>
-            <p className="text-sm text-coffee-500">Try changing the filters or search query.</p>
+          <div className="text-center py-24 space-y-4">
+            <div className="h-16 w-16 rounded-full bg-[#F5EFE6] flex items-center justify-center mx-auto">
+              <Coffee className="h-8 w-8 text-[#3E2B21]/30" />
+            </div>
+            <p className="text-[#3E2B21]/60 text-lg font-bold">No orders match this view</p>
+            <p className="text-sm text-[#3E2B21]/40 font-medium">Try changing the filters or search query.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="text-xs uppercase tracking-[0.35em] text-[#5F6F65]/70 bg-[#F7F4EA]">
-                <tr>
+              <thead>
+                <tr className="bg-[#FDFCF7] border-b border-[#EBE4D5]/60">
                   {[
-                    "Order #",
+                    "Order",
                     "Customer",
                     "Table",
                     "Status",
@@ -642,60 +736,85 @@ export default function OrdersPage() {
                     "Time",
                     "",
                   ].map((head) => (
-                    <th key={head} className="px-6 py-4 text-left font-semibold">
+                    <th key={head} className="px-6 py-4 text-left text-[11px] font-bold uppercase tracking-widest text-[#3E2B21]/40">
                       {head}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gold-500/20">
-                {filteredOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="transition hover:bg-[#F8F5ED]"
-                  >
-                    <td className="px-6 py-4 font-semibold text-[#1A4D2E]">
-                      <div className="flex items-center gap-3">
-                        <span className="h-2 w-2 rounded-full bg-[#1A4D2E]" />
-                        #{order.orderNumber?.slice(-6) || order.id.slice(0, 6)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-[#1A4D2E]/80">
-                      {order.customerName || "Walk-in"}
-                    </td>
-                    <td className="px-6 py-4 text-[#1A4D2E]/80">
-                      {order.table?.name || "N/A"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeClass(
-                          order.status
-                        )}`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-[#1A4D2E]/80">
-                      {order.items?.length || 0} items
-                    </td>
-                    <td className="px-6 py-4 font-bold text-[#1A4D2E]">
-                      {formatCurrency(Number(order.totalAmount))}
-                    </td>
-                    <td className="px-6 py-4 text-[#5F6F65]/70 text-sm">
-                      {order.createdAt
-                        ? new Date(order.createdAt).toLocaleString()
-                        : "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="p-2 rounded-2xl border border-coffee-100 hover:border-coffee-300 transition"
-                      >
-                        <Eye className="h-5 w-5 text-coffee-700" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {filteredOrders.map((order, idx) => {
+                  const statusConfig = getStatusConfig(order.status);
+                  return (
+                    <tr
+                      key={order.id}
+                      className={`transition-colors duration-200 hover:bg-[#FDFCF7] ${idx !== filteredOrders.length - 1 ? "border-b border-[#EBE4D5]/40" : ""
+                        }`}
+                    >
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-[#F3EDE5] flex items-center justify-center">
+                            <Hash className="h-3.5 w-3.5 text-[#6B4423]" />
+                          </div>
+                          <span className="font-bold text-[#3E2B21] text-sm">
+                            {order.orderNumber?.slice(-6) || order.id.slice(0, 6)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-[#F5EFE6] flex items-center justify-center text-[11px] font-bold text-[#6B4423]">
+                            {(order.customerName || "W")[0].toUpperCase()}
+                          </div>
+                          <span className="text-sm font-medium text-[#3E2B21]/80">
+                            {order.customerName || "Walk-in"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-sm font-medium text-[#3E2B21]/60">
+                        {order.table?.name || "—"}
+                      </td>
+                      <td className="px-6 py-5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold ${statusConfig.bg} ${statusConfig.text} border ${statusConfig.border}`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${statusConfig.dot}`} />
+                          {statusConfig.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="text-sm font-medium text-[#3E2B21]/60">
+                          {order.items?.length || 0} items
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="font-bold text-[#3E2B21] text-sm">
+                          {formatCurrency(Number(order.totalAmount))}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="text-[12px] text-[#3E2B21]/40 font-medium">
+                          {order.createdAt
+                            ? new Date(order.createdAt).toLocaleString("en-IN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              day: "numeric",
+                              month: "short",
+                            })
+                            : "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className="h-9 w-9 rounded-full border border-[#EBE4D5] hover:border-[#3E2B21]/20 hover:bg-[#F5EFE6] flex items-center justify-center transition-all"
+                        >
+                          <Eye className="h-4 w-4 text-[#6B4423]" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

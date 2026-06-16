@@ -205,41 +205,31 @@ export default function DashboardPage() {
   return (
     <div className="space-y-10">
       {/* ✅ HERO */}
-      <section
-        className="rounded-[40px] text-white p-8 lg:p-12 shadow-[0_45px_80px_rgba(14,60,39,0.45)] border border-white/10"
-        style={{
-          backgroundImage: `linear-gradient(
-      135deg,
-      #163d28ff 0%,
-      #1A4D2E 60%,
-      #2F7A46 100%
-    )`,
-        }}
-      >
-
-        <div className="flex flex-col xl:flex-row gap-10 items-start">
-          <div className="space-y-6 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-semibold">
-              <Sparkles className="h-4 w-4" /> Welcome back to Odoo Cafe
+      <section className="flex flex-col xl:flex-row gap-6">
+        {/* Left Block: Hero Text & Image */}
+        <div className="relative flex-1 bg-[#FDFCF7] rounded-[40px] p-8 lg:p-12 shadow-[0_4px_20px_rgba(62,43,33,0.02)] border border-[#EBE4D5]/60 overflow-hidden flex flex-col justify-center">
+          <div className="relative z-10 max-w-xl space-y-8">
+            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#FCF8F2] text-coffee-dark text-sm font-semibold border border-[#EBE4D5]">
+              👋 Welcome back to Odoo Cafe
             </div>
 
             <div>
-              <h1 className="text-4xl lg:text-5xl font-black leading-tight">
+              <h1 className="text-4xl lg:text-[52px] font-black leading-[1.15] text-coffee-dark font-serif tracking-tight">
                 Brewing insights for today&apos;s service.
               </h1>
-              <p className="text-white/80 text-lg mt-3">
+              <p className="text-coffee-dark/70 text-lg mt-4 font-medium leading-relaxed max-w-md">
                 Track revenue, monitor orders, and keep your baristas aligned with a single glance.
               </p>
             </div>
 
-            <div className="inline-flex gap-2 bg-white/5 rounded-full p-1">
+            <div className="inline-flex gap-2 bg-[#FCF9F2] rounded-full p-1.5 border border-[#EBE4D5]/60">
               {timeframeOptions.map((option) => (
                 <button
                   key={option.value}
                   onClick={() => setActiveRange(option.value)}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold transition ${activeRange === option.value
-                    ? "bg-white text-[#1A4D2E] shadow"
-                    : "text-white/80 hover:bg-white/10"
+                  className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${activeRange === option.value
+                    ? "bg-coffee-dark text-white shadow-md"
+                    : "text-coffee-dark/70 hover:bg-white"
                     }`}
                 >
                   {option.label}
@@ -247,34 +237,53 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+          
+          <img 
+            src="/hero-coffee.png" 
+            alt="Coffee Cups" 
+            className="absolute -right-10 bottom-0 h-[110%] object-contain"
+          />
+        </div>
 
-          <div className="w-full max-w-sm bg-white/10 rounded-[32px] border border-white/20 p-6 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-sm text-white/80">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
+        {/* Right Block: Stats & Actions */}
+        <div className="w-full xl:w-[380px] flex flex-col gap-4">
+          <div className="bg-transparent flex flex-col gap-5 h-full">
+            <div className="bg-[#FDFCF7] rounded-[32px] p-6 shadow-[0_4px_20px_rgba(62,43,33,0.02)] border border-[#EBE4D5]/60 flex items-center justify-between text-sm text-coffee-dark font-semibold">
+              <div className="flex items-center gap-3">
+                <CalendarDays className="h-5 w-5 text-coffee-dark/70" />
                 <span>{today}</span>
               </div>
-              <button className="h-10 w-10 rounded-2xl bg-white text-[#1A4D2E] flex items-center justify-center">
+              <button className="h-10 w-10 rounded-full border border-[#EBE4D5] flex items-center justify-center text-coffee-dark bg-white hover:bg-beige-50 shadow-sm transition-all">
                 <Bell className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="relative mt-4">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
+            <div className="relative">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-coffee-dark/40" />
               <input
-                placeholder="Search drink, table, barista"
-                className="w-full rounded-2xl bg-white/10 border border-white/20 px-12 py-3 text-sm text-white placeholder:text-white/60 focus:outline-none"
+                placeholder="Search drink, table, barista..."
+                className="w-full rounded-[24px] bg-white border border-[#EBE4D5] px-14 py-4 text-sm font-medium text-coffee-dark placeholder:text-coffee-dark/40 focus:outline-none focus:border-coffee-dark/20 focus:ring-2 focus:ring-coffee-dark/10 shadow-[0_4px_20px_rgba(62,43,33,0.02)]"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-5 text-sm">
-              <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                <p className="text-white/70">Open Orders</p>
-                <p className="text-2xl font-bold">{openOrders}</p>
+            <div className="grid grid-cols-2 gap-4 flex-1">
+              <div className="rounded-[28px] bg-white border border-[#EBE4D5] p-6 shadow-[0_4px_20px_rgba(62,43,33,0.02)] flex flex-col justify-center">
+                <p className="text-coffee-dark/60 text-[13px] font-bold tracking-wide">Open Orders</p>
+                <div className="flex items-end justify-between mt-3">
+                  <p className="text-[32px] font-black text-coffee-dark leading-none">{openOrders}</p>
+                  <div className="h-10 w-10 rounded-full bg-[#FCF8F2] flex items-center justify-center text-coffee-dark/60 border border-[#EBE4D5]/60">
+                    <ShoppingBag className="h-5 w-5" />
+                  </div>
+                </div>
               </div>
-              <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                <p className="text-white/70">Active Staff</p>
-                <p className="text-2xl font-bold">{activeStaff}</p>
+              <div className="rounded-[28px] bg-white border border-[#EBE4D5] p-6 shadow-[0_4px_20px_rgba(62,43,33,0.02)] flex flex-col justify-center">
+                <p className="text-coffee-dark/60 text-[13px] font-bold tracking-wide">Active Staff</p>
+                <div className="flex items-end justify-between mt-3">
+                  <p className="text-[32px] font-black text-coffee-dark leading-none">{activeStaff}</p>
+                  <div className="h-10 w-10 rounded-full bg-[#FCF8F2] flex items-center justify-center text-coffee-dark/60 border border-[#EBE4D5]/60">
+                    <Users className="h-5 w-5" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -19,10 +19,11 @@ module.exports = {
           700: '#5C3D2E',
           800: '#3E2723',
           900: '#2C1810',
+          dark: '#3E2B21', /* Exact dark brown for sidebar */
         },
         beige: {
-          50: '#FAF9F6',
-          100: '#F3F1E2',
+          50: '#FCF9F2', /* Main bg color */
+          100: '#F5EFE6',
           200: '#EAE6D5',
           300: '#E0D9C5',
           400: '#D4C4AC',
@@ -48,6 +49,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        serif: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
       },
       borderRadius: {
         '3xl': '1.5rem',

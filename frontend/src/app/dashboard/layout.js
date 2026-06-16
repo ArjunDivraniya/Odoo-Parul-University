@@ -28,36 +28,28 @@ export default function DashboardLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="flex h-screen bg-beige-100">
+    <div className="flex h-screen bg-beige-50 font-sans">
       {/* ✅ Sidebar */}
       <aside
         className={`${isSidebarOpen ? "w-64" : "w-20"
-          } relative sidebar-aurora text-white shadow-[0_20px_50px_rgba(9,22,15,0.45)] 
-        transition-all duration-500 flex flex-col rounded-[26px] my-4 ml-4 
-        h-[calc(100vh-2rem)] overflow-hidden border border-white/10`}
+          } relative bg-coffee-dark text-white shadow-[10px_0_40px_rgba(62,43,33,0.1)] 
+        transition-all duration-500 flex flex-col h-screen overflow-hidden shrink-0`}
       >
-        {/* Decorative Orbs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <span className="floating-orb absolute -right-6 top-24 h-24 w-24 rounded-full bg-white/10 blur-3xl" />
-          <span className="floating-orb absolute left-6 bottom-10 h-32 w-32 rounded-full bg-[#F4B860]/20 blur-3xl delay-150" />
-        </div>
-
         {/* Logo + Toggle */}
-        <div className="px-5 py-4 flex items-center justify-between relative z-10">
+        <div className="px-5 py-8 flex items-center justify-between relative z-10">
           {isSidebarOpen && (
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-white border border-white/40 flex items-center justify-center shadow-lg">
-                <Image
-                  src="/odoo_cafe_logo.png"
-                  alt="Odoo Cafe Logo"
-                  width={48}
-                  height={48}
-                  className="object-contain"
-                />
+              <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-md shrink-0">
+                <Coffee className="h-6 w-6 text-coffee-dark" />
               </div>
-              <p className="text-sm font-bold tracking-[0.2em] uppercase text-white">
-                Odoo Cafe
-              </p>
+              <div className="flex flex-col">
+                <p className="text-[15px] font-bold tracking-wider uppercase text-white leading-tight">
+                  Odoo Cafe
+                </p>
+                <p className="text-[10px] text-white/70 font-medium tracking-widest">
+                  Smart Point
+                </p>
+              </div>
             </div>
           )}
 
@@ -81,20 +73,20 @@ export default function DashboardLayout({ children }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center p-3 rounded-2xl transition-all duration-300 group backdrop-blur ${isActive
-                    ? "bg-white text-[#1A4D2E] shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-white/80"
-                    : "bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
+                className={`flex items-center p-3.5 rounded-[20px] transition-all duration-300 group ${isActive
+                    ? "bg-beige-100 text-coffee-dark shadow-sm"
+                    : "bg-transparent text-white/70 hover:bg-white/5 hover:text-white"
                   }`}
               >
                 <item.icon
-                  className={`h-6 w-6 ${isActive
-                      ? "text-[#1A4D2E]"
-                      : "text-white/70 group-hover:text-white"
+                  className={`h-5 w-5 ${isActive
+                      ? "text-coffee-dark"
+                      : "text-white/60 group-hover:text-white"
                     }`}
                 />
 
                 {isSidebarOpen && (
-                  <span className="ml-4 text-base">{item.label}</span>
+                  <span className={`ml-4 text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>{item.label}</span>
                 )}
               </Link>
             );
@@ -102,7 +94,7 @@ export default function DashboardLayout({ children }) {
         </nav>
 
         {/* Logout */}
-        <div className="p-4 border-t border-white/20 mx-3 mb-4 relative z-10">
+        <div className="p-5 mt-auto relative z-10">
           <button
             onClick={() => {
               localStorage.removeItem('token');
@@ -110,17 +102,17 @@ export default function DashboardLayout({ children }) {
               localStorage.removeItem('activeSession');
               window.location.href = '/login';
             }}
-            className="flex items-center w-full p-3 rounded-2xl text-red-200 hover:bg-white/10 hover:text-red-100 transition-colors border border-white/10"
+            className="flex items-center w-full p-3.5 rounded-[20px] text-white/70 hover:bg-white/5 hover:text-white transition-colors border border-white/10"
           >
-            <LogOut className="h-6 w-6" />
-            {isSidebarOpen && <span className="ml-4 font-medium">Logout</span>}
+            <LogOut className="h-5 w-5" />
+            {isSidebarOpen && <span className="ml-4 font-medium text-[15px]">Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* ✅ Main Content */}
-      <main className="flex-1 overflow-y-auto bg-beige-100 p-8">
-        <div className="max-w-7xl mx-auto">{children}</div>
+      <main className="flex-1 overflow-y-auto bg-beige-50 p-8 h-screen">
+        <div className="max-w-[1400px] mx-auto">{children}</div>
       </main>
     </div>
   );
