@@ -22,7 +22,7 @@ const sidebarItems = [
   { icon: Coffee, label: "Products", href: "/dashboard/products" },
   { icon: Users, label: "Customers", href: "/dashboard/customers" },
   { icon: Ticket, label: "Coupons", href: "/dashboard/coupons" },
-  { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+  { icon: Settings, label: "Manage Cafe", href: "/dashboard/settings" },
 ];
 
 export default function DashboardLayout({ children }) {

@@ -385,10 +385,10 @@ export default function SettingsPage() {
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#FCF8F2] text-[#3E2B21] text-sm font-semibold border border-[#EBE4D5]">
-              <SettingsIcon className="h-4 w-4" /> Cafe Settings
+              <SettingsIcon className="h-4 w-4" /> Manage Cafe
             </div>
             <h1 className="text-3xl lg:text-[44px] font-black leading-[1.15] text-[#3E2B21] font-serif tracking-tight">
-              Configure your cafe
+              Manage your cafe
             </h1>
             <p className="text-[#3E2B21]/60 text-base font-medium leading-relaxed max-w-md">
               Manage everything — from branding to billing, team to tables.
@@ -405,8 +405,8 @@ export default function SettingsPage() {
           )}
         </div>
         <img
-          src="/settings_hero_1781584343346.png"
-          alt="Coffee"
+          src="/manage_cafe_hero_1781584566773.png"
+          alt="Manage Cafe"
           className="absolute -right-16 -bottom-10 h-[130%] object-contain opacity-20 pointer-events-none"
         />
       </section>

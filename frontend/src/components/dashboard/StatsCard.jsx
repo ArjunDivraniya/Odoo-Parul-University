@@ -1,15 +1,15 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 export default function StatsCard({ title, value, icon: Icon, trend = "12.5%", trendUp = true }) {
-  // Default to green theme as seen in the design image
-  let iconBg = "bg-[#E8F5E9]";
-  let iconColor = "text-[#1A4D2E]";
-  let sparklineStroke = "#1A4D2E";
-  let sparklineGradientStart = "rgba(26, 77, 46, 0.4)";
-  let sparklineGradientEnd = "rgba(26, 77, 46, 0)";
+  // Default to coffee/brown theme to match the app aesthetic
+  let iconBg = "bg-[#F5EFE6]";
+  let iconColor = "text-[#6B4423]";
+  let sparklineStroke = "#6B4423";
+  let sparklineGradientStart = "rgba(107, 68, 35, 0.4)";
+  let sparklineGradientEnd = "rgba(107, 68, 35, 0)";
   
-  if (title.includes("Occupied Tables")) {
-    iconBg = "bg-[#F5EFE6]";
+  if (title.includes("Occupied Tables") || title.includes("Available Tables")) {
+    iconBg = "bg-[#FCF8F2]";
     iconColor = "text-[#8C8775]";
     sparklineStroke = "#8C8775";
     sparklineGradientStart = "rgba(140, 135, 117, 0.4)";
