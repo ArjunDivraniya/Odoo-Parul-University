@@ -42,9 +42,9 @@ export default function CartSidebar({ onAddCustomer }) {
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
-    if (!customer || !customer.name || !customer.email || !customer.mobile) {
+    if (!customer || !customer.name || !(customer.phone || customer.mobile)) {
       showAlert(
-        "Please add customer details (Name, Email, and Mobile) in the sidebar or products page before proceeding.",
+        "Please add customer details (Name and Phone Number) in the sidebar or products page before proceeding.",
         "Checkout Required Information",
         "warning"
       );
@@ -68,7 +68,12 @@ export default function CartSidebar({ onAddCustomer }) {
           variantId: item.variantId || null,
           notes: item.notes || null
         })),
-        customer: customer || undefined,
+        customerId: customer?.id || null,
+        customer: customer ? {
+          name: customer.name,
+          email: customer.email || null,
+          mobile: customer.phone || customer.mobile || null
+        } : undefined,
         couponCode: coupon?.code || null,
         status: 'DRAFT',
         autoApply,
@@ -102,9 +107,9 @@ export default function CartSidebar({ onAddCustomer }) {
 
   const handleSendToKitchen = async () => {
     if (cart.length === 0) return;
-    if (!customer || !customer.name || !customer.email || !customer.mobile) {
+    if (!customer || !customer.name || !(customer.phone || customer.mobile)) {
       showAlert(
-        "Please add customer details (Name, Email, and Mobile) in the sidebar or products page before sending to kitchen.",
+        "Please add customer details (Name and Phone Number) in the sidebar or products page before sending to kitchen.",
         "Kitchen Required Information",
         "warning"
       );
@@ -131,7 +136,12 @@ export default function CartSidebar({ onAddCustomer }) {
           variantId: item.variantId || null,
           notes: item.notes || null
         })),
-        customer: customer || undefined,
+        customerId: customer?.id || null,
+        customer: customer ? {
+          name: customer.name,
+          email: customer.email || null,
+          mobile: customer.phone || customer.mobile || null
+        } : undefined,
         couponCode: coupon?.code || null,
         autoApply,
         appliedManualPromotions

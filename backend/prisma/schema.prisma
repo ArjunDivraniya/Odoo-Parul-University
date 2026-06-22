@@ -153,6 +153,8 @@ model Order {
   items             OrderItem[]
   payments          Payment[]
   appliedPromotions Json?
+  customerId     String?
+  customer       Customer?      @relation(fields: [customerId], references: [id])
 
   @@index([createdAt])
   @@index([customerEmail])
@@ -162,6 +164,7 @@ model Order {
   @@index([status])
   @@index([tableId])
   @@index([userId])
+  @@index([customerId])
 }
 
 model OrderItem {
@@ -353,4 +356,24 @@ model PromotionTemplate {
   updatedAt   DateTime @updatedAt
 
   @@map("promotion_templates")
+}
+
+model Customer {
+  id              String    @id @default(uuid())
+  name            String
+  phone           String    @unique
+  email           String?
+  birthday        DateTime?
+  totalOrders     Int       @default(0)
+  totalSpent      Decimal   @default(0.00) @db.Decimal(10, 2)
+  lastVisit       DateTime?
+  points          Int       @default(0)
+  membershipLevel String    @default("BRONZE")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  orders          Order[]
+
+  @@index([phone])
+  @@index([email])
+  @@map("customers")
 }

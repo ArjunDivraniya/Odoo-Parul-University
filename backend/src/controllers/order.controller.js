@@ -3,6 +3,7 @@ const prisma = require('../lib/prisma');
 const { z } = require('zod');
 const emailService = require('../services/email.service');
 const whatsappService = require('../services/whatsapp.service');
+const customerController = require('./customer.controller');
 const { getIo } = require('../lib/socket');
 
 
@@ -20,9 +21,10 @@ const createOrderSchema = z.object({
   sessionId: z.string().uuid().optional().nullable(),
   type: z.enum(['DINE_IN', 'TAKEAWAY']).default('DINE_IN'),
   items: z.array(orderItemSchema).min(1),
+  customerId: z.string().optional().nullable(),
   customer: z.object({
     name: z.string().optional().nullable(),
-    email: z.string().email().optional().or(z.literal('')).nullable(),
+    email: z.string().optional().nullable(),
     mobile: z.string().optional().nullable()
   }).optional().nullable(),
   couponCode: z.string().optional().nullable(),
@@ -44,7 +46,7 @@ const payOrderSchema = z.object({
 exports.createOrder = async (req, res) => {
   try {
     const validatedData = createOrderSchema.parse(req.body);
-    const { id, tableId, sessionId, items, type, customer, couponCode, status } = validatedData;
+    const { id, tableId, sessionId, items, type, customerId, customer, couponCode, status } = validatedData;
     const userId = req.user?.id;
 
     let finalTableId = tableId;
@@ -175,6 +177,7 @@ exports.createOrder = async (req, res) => {
           customerName: customer?.name || null,
           customerEmail: customer?.email || null,
           customerMobile: customer?.mobile || null,
+          customerId: customerId || null,
           items: {
             create: orderItemsData
           }
@@ -207,6 +210,7 @@ exports.createOrder = async (req, res) => {
           customerName: customer?.name || null,
           customerEmail: customer?.email || null,
           customerMobile: customer?.mobile || null,
+          customerId: customerId || null,
           items: {
             create: orderItemsData
           }
@@ -430,6 +434,9 @@ exports.payOrder = async (req, res) => {
         },
         include: { items: true, table: true }
       });
+
+      // Update customer statistics and loyalty tier
+      await customerController.processCustomerOrderPayment(id);
 
       // Create Kitchen Ticket
       const kitchenTicket = await prisma.kitchenTicket.create({

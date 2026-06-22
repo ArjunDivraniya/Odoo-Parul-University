@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const emailService = require('../services/email.service');
 const whatsappService = require('../services/whatsapp.service');
+const customerController = require('./customer.controller');
 const { getIo } = require('../lib/socket');
 
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_mockkey123';
@@ -145,6 +146,9 @@ exports.verifyRazorpayPayment = async (req, res) => {
         table: true
       }
     });
+
+    // Update customer statistics and loyalty tier
+    await customerController.processCustomerOrderPayment(order.id);
 
     // Create Kitchen Ticket
     const kitchenTicket = await prisma.kitchenTicket.create({

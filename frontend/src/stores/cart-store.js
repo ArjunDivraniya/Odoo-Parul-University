@@ -220,10 +220,12 @@ export const CartProvider = ({ children }) => {
 
   const loadOrder = (order) => {
     setOrderId(order.id);
-    setCustomer(order.customerEmail ? {
+    setCustomer(order.customerName ? {
+      id: order.customerId,
       name: order.customerName,
       email: order.customerEmail,
-      mobile: order.customerMobile
+      mobile: order.customerMobile,
+      phone: order.customerMobile
     } : null);
 
     if (order.discountCode) {
