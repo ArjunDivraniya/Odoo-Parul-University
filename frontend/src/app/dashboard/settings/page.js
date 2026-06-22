@@ -502,7 +502,7 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black text-[#3E2B21]">Your Team</h3>
-                  <button onClick={() => { setEditingUser(null); setShowUserModal(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)]">
+                  <button onClick={() => { setEditingUser(null); setShowUserModal(true); }} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)] disabled:opacity-50 disabled:cursor-not-allowed">
                     <Plus className="h-4 w-4" /> Add Staff
                   </button>
                 </div>
@@ -525,10 +525,10 @@ export default function SettingsPage() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <button onClick={() => { setEditingUser(u); setShowUserModal(true); }} className="h-8 w-8 rounded-full border border-[#EBE4D5] hover:bg-[#F5EFE6] flex items-center justify-center transition-all">
+                              <button onClick={() => { setEditingUser(u); setShowUserModal(true); }} disabled={saving} className="h-8 w-8 rounded-full border border-[#EBE4D5] hover:bg-[#F5EFE6] flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                 <Edit2 className="h-3.5 w-3.5 text-[#6B4423]" />
                               </button>
-                              <button onClick={() => handleDeleteUser(u.id)} className="h-8 w-8 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all">
+                              <button onClick={() => handleDeleteUser(u.id)} disabled={saving} className="h-8 w-8 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                 <Trash2 className="h-3.5 w-3.5 text-red-500" />
                               </button>
                             </div>
@@ -546,7 +546,7 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black text-[#3E2B21]">Order Devices</h3>
-                  <button onClick={() => setShowTerminalModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)]">
+                  <button onClick={() => setShowTerminalModal(true)} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)] disabled:opacity-50 disabled:cursor-not-allowed">
                     <Plus className="h-4 w-4" /> Add Device
                   </button>
                 </div>
@@ -559,7 +559,7 @@ export default function SettingsPage() {
                         </div>
                         <span className="font-bold text-[#3E2B21] text-sm">{t.name}</span>
                       </div>
-                      <button onClick={() => handleDeleteTerminal(t.id)} className="h-8 w-8 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all">
+                      <button onClick={() => handleDeleteTerminal(t.id)} disabled={saving} className="h-8 w-8 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </button>
                     </div>
@@ -573,11 +573,11 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black text-[#3E2B21]">Your Cafe Layout</h3>
-                  <button onClick={() => setShowFloorModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)]">
+                  <button onClick={() => setShowFloorModal(true)} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)] disabled:opacity-50 disabled:cursor-not-allowed">
                     <Plus className="h-4 w-4" /> Add Floor
                   </button>
                 </div>
-
+ 
                 <div className="space-y-6">
                   {floors.map(floor => (
                     <div key={floor.id} className="p-6 rounded-[24px] border border-[#EBE4D5]/60 bg-[#FDFCF7] space-y-4">
@@ -589,16 +589,17 @@ export default function SettingsPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => { setSelectedFloorForTable(floor.id); setShowTableModal(true); }}
-                            className="px-3 py-1.5 bg-[#3E2B21] hover:bg-[#2C1810] text-white rounded-[12px] text-xs font-bold flex items-center gap-1 shadow-sm transition-colors"
+                            disabled={saving}
+                            className="px-3 py-1.5 bg-[#3E2B21] hover:bg-[#2C1810] text-white rounded-[12px] text-xs font-bold flex items-center gap-1 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Plus className="h-3.5 w-3.5" /> Add Table
                           </button>
-                          <button onClick={() => handleDeleteFloor(floor.id)} className="h-8 w-8 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all">
+                          <button onClick={() => handleDeleteFloor(floor.id)} disabled={saving} className="h-8 w-8 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             <Trash2 className="h-3.5 w-3.5 text-red-500" />
                           </button>
                         </div>
                       </div>
-
+ 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {floor.tables?.map(table => (
                           <div key={table.id} className="bg-white p-4 rounded-[18px] border border-[#EBE4D5]/60 flex justify-between items-center hover:shadow-sm transition-all">
@@ -606,7 +607,7 @@ export default function SettingsPage() {
                               <p className="font-bold text-[#3E2B21] text-sm">{table.name}</p>
                               <p className="text-[11px] text-[#3E2B21]/40 font-medium">{table.seats} Seats • {table.status || 'AVAILABLE'}</p>
                             </div>
-                            <button onClick={() => handleDeleteTable(table.id)} className="h-7 w-7 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all">
+                            <button onClick={() => handleDeleteTable(table.id)} disabled={saving} className="h-7 w-7 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                               <Trash2 className="h-3 w-3 text-red-400" />
                             </button>
                           </div>
@@ -635,7 +636,7 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black text-[#3E2B21]">Menu Categories</h3>
-                  <button onClick={() => setShowCategoryModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)]">
+                  <button onClick={() => setShowCategoryModal(true)} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[16px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.15)] disabled:opacity-50 disabled:cursor-not-allowed">
                     <Plus className="h-4 w-4" /> Add Category
                   </button>
                 </div>
@@ -645,7 +646,7 @@ export default function SettingsPage() {
                       <span className="font-bold text-[#3E2B21] text-sm">{c.name}</span>
                       <div className="flex items-center gap-3">
                         <span className="text-[11px] text-[#3E2B21]/30 font-medium">{c._count?.products || 0} items</span>
-                        <button onClick={() => handleDeleteCategory(c.id)} className="h-7 w-7 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all">
+                        <button onClick={() => handleDeleteCategory(c.id)} disabled={saving} className="h-7 w-7 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                           <Trash2 className="h-3 w-3 text-red-400" />
                         </button>
                       </div>
@@ -829,19 +830,30 @@ export default function SettingsPage() {
 // --- Sub Components ---
 
 function InputModal({ title, label, onClose, onSave, saving }) {
+  const { showAlert } = usePopup();
   const [val, setVal] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!val.trim()) {
+      showAlert(`${label} is required.`, "Validation Error", "error");
+      return;
+    }
+    onSave(val.trim());
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={saving ? undefined : onClose}>
       <div className="bg-white rounded-[32px] w-full max-w-sm shadow-[0_25px_80px_rgba(62,43,33,0.18)]" onClick={e => e.stopPropagation()}>
         <div className="p-8 pb-6 border-b border-[#EBE4D5]/60">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-black text-[#3E2B21]">{title}</h3>
-            <button onClick={onClose} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors">
+            <button onClick={onClose} disabled={saving} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors disabled:opacity-50">
               <X className="h-5 w-5 text-[#6B4423]" />
             </button>
           </div>
         </div>
-        <div className="p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div>
             <label className="block text-[11px] font-bold text-[#3E2B21]/40 tracking-wider uppercase mb-2">{label}</label>
             <input
@@ -854,37 +866,53 @@ function InputModal({ title, label, onClose, onSave, saving }) {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => onSave(val)}
-              disabled={!val || saving}
+              type="submit"
+              disabled={!val.trim() || saving}
               className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)] disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save"}
             </button>
-            <button onClick={onClose} disabled={saving} className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50">
+            <button type="button" onClick={onClose} disabled={saving} className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50">
               Cancel
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
 }
 
 function TableModal({ onClose, onSave, saving }) {
+  const { showAlert } = usePopup();
   const [name, setName] = useState("");
   const [seats, setSeats] = useState("4");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      showAlert("Table Name is required.", "Validation Error", "error");
+      return;
+    }
+    const seatsNum = Number(seats);
+    if (isNaN(seatsNum) || seatsNum <= 0 || !Number.isInteger(seatsNum)) {
+      showAlert("Seats Count must be a positive integer.", "Validation Error", "error");
+      return;
+    }
+    onSave(name.trim(), seatsNum);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={saving ? undefined : onClose}>
       <div className="bg-white rounded-[32px] w-full max-w-sm shadow-[0_25px_80px_rgba(62,43,33,0.18)]" onClick={e => e.stopPropagation()}>
         <div className="p-8 pb-6 border-b border-[#EBE4D5]/60">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-black text-[#3E2B21]">Add Table</h3>
-            <button onClick={onClose} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors">
+            <button onClick={onClose} disabled={saving} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors disabled:opacity-50">
               <X className="h-5 w-5 text-[#6B4423]" />
             </button>
           </div>
         </div>
-        <div className="p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div>
             <label className="block text-[11px] font-bold text-[#3E2B21]/40 tracking-wider uppercase mb-2">Table Name</label>
             <input
@@ -907,26 +935,53 @@ function TableModal({ onClose, onSave, saving }) {
             />
           </div>
           <div className="flex gap-3">
-            <button onClick={() => onSave(name, Number(seats))} disabled={!name || !seats || saving} className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)] disabled:opacity-50">
+            <button type="submit" disabled={!name.trim() || !seats || saving} className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)] disabled:opacity-50">
               {saving ? "Saving..." : "Save"}
             </button>
-            <button onClick={onClose} disabled={saving} className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50">
+            <button type="button" onClick={onClose} disabled={saving} className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50">
               Cancel
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
 }
 
 function UserModal({ user, onClose, onSave, saving }) {
+  const { showAlert } = usePopup();
   const [data, setData] = useState({
     name: user?.name || "",
     email: user?.email || "",
     role: user?.role || "EMPLOYEE",
     password: ""
   });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!data.name.trim()) {
+      showAlert("Full Name is required.", "Validation Error", "error");
+      return;
+    }
+    if (!data.email.trim()) {
+      showAlert("Email is required.", "Validation Error", "error");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email.trim())) {
+      showAlert("Please enter a valid email address.", "Validation Error", "error");
+      return;
+    }
+    if (!user && !data.password) {
+      showAlert("Password is required for new users.", "Validation Error", "error");
+      return;
+    }
+    onSave({
+      ...data,
+      name: data.name.trim(),
+      email: data.email.trim(),
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={saving ? undefined : onClose}>
@@ -939,12 +994,12 @@ function UserModal({ user, onClose, onSave, saving }) {
               </div>
               <h3 className="text-xl font-black text-[#3E2B21]">{user ? "Edit User" : "Add New User"}</h3>
             </div>
-            <button onClick={onClose} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors">
+            <button onClick={onClose} disabled={saving} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors disabled:opacity-50">
               <X className="h-5 w-5 text-[#6B4423]" />
             </button>
           </div>
         </div>
-        <div className="p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div>
             <label className="block text-[11px] font-bold text-[#3E2B21]/40 tracking-wider uppercase mb-2">Full Name</label>
             <input
@@ -988,14 +1043,14 @@ function UserModal({ user, onClose, onSave, saving }) {
             />
           </div>
           <div className="flex gap-3 pt-2">
-            <button onClick={() => onSave(data)} disabled={saving} className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)] disabled:opacity-50">
+            <button type="submit" disabled={saving} className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)] disabled:opacity-50">
               {saving ? "Saving..." : "Save User"}
             </button>
-            <button onClick={onClose} disabled={saving} className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50">
+            <button type="button" onClick={onClose} disabled={saving} className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50">
               Cancel
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

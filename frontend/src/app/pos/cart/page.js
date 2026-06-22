@@ -29,6 +29,8 @@ export default function CartPage() {
   const [couponError, setCouponError] = useState("");
   const [couponSuccess, setCouponSuccess] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [sendingToKitchen, setSendingToKitchen] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
 
   useEffect(() => {
     const tableData = localStorage.getItem('selectedTable');
@@ -105,6 +107,8 @@ export default function CartPage() {
 
   // Send Order to Kitchen
   const handleSendToKitchen = async () => {
+    if (sendingToKitchen || checkingOut) return;
+    setSendingToKitchen(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -146,11 +150,15 @@ export default function CartPage() {
     } catch (e) {
       console.error(e);
       showAlert("Error sending order to kitchen", "Kitchen Error", "error");
+    } finally {
+      setSendingToKitchen(false);
     }
   };
 
   // Proceed to Checkout
   const handleCheckout = async () => {
+    if (sendingToKitchen || checkingOut) return;
+    setCheckingOut(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -192,6 +200,8 @@ export default function CartPage() {
     } catch (e) {
       console.error(e);
       showAlert("Checkout error", "Checkout Error", "error");
+    } finally {
+      setCheckingOut(false);
     }
   };
 
@@ -440,19 +450,21 @@ export default function CartPage() {
                 {selectedTable && (
                   <button
                     onClick={handleSendToKitchen}
-                    className="w-full bg-white text-[#1A4D2E] border-2 border-[#1A4D2E] py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#E8F5E9] transition-all shadow-md flex items-center justify-center gap-2"
+                    disabled={sendingToKitchen || checkingOut}
+                    className="w-full bg-white text-[#1A4D2E] border-2 border-[#1A4D2E] py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#E8F5E9] transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Utensils className="h-5 w-5" />
-                    Send to Kitchen
+                    {sendingToKitchen ? "Sending..." : "Send to Kitchen"}
                   </button>
                 )}
 
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-[#1A4D2E] text-white py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#143d24] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                  disabled={sendingToKitchen || checkingOut}
+                  className="w-full bg-[#1A4D2E] text-white py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#143d24] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CreditCard className="h-5 w-5" />
-                  Proceed to Payment
+                  {checkingOut ? "Processing..." : "Proceed to Payment"}
                 </button>
               </div>
             </div>

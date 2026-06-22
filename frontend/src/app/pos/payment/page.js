@@ -618,6 +618,7 @@ export default function POSPaymentPage() {
             <div className="pt-6">
               <button
                 onClick={() => {
+                  if (processing) return;
                   if (paymentMethod === "CASH") {
                     handleCashPayment();
                   } else {
@@ -627,7 +628,9 @@ export default function POSPaymentPage() {
                 disabled={processing || order?.paymentStatus === 'PAID' || (paymentMethod === "CASH" && (parseFloat(amountReceived) < total || !amountReceived))}
                 className="w-full bg-[#1A4D2E] text-white py-4 rounded-[2rem] font-bold text-lg hover:bg-[#143d24] disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0"
               >
-                {paymentMethod === "CASH" ? `Complete Payment - ₹${total.toFixed(2)}` : 'Pay via Razorpay Test'}
+                {processing 
+                  ? (paymentMethod === "CASH" ? "Processing Cash..." : "Initiating Razorpay...") 
+                  : (paymentMethod === "CASH" ? `Complete Payment - ₹${total.toFixed(2)}` : 'Pay via Razorpay Test')}
               </button>
             </div>
           </div>

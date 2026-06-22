@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/stores/cart-store";
+import ComboPanel from "@/components/pos/ComboPanel";
 import { Trash2, Minus, Plus, CreditCard, ChefHat, User, MapPin, Package, List, Gift } from "lucide-react";
 import { usePopup } from "@/context/PopupContext";
 
@@ -41,6 +42,7 @@ export default function CartSidebar({ onAddCustomer }) {
   const evaluatedItems = evaluatedData?.items || [];
 
   const handleCheckout = async () => {
+    if (checkingOut || sending) return;
     if (cart.length === 0) return;
     if (!customer || !customer.name || !(customer.phone || customer.mobile)) {
       showAlert(
@@ -106,6 +108,7 @@ export default function CartSidebar({ onAddCustomer }) {
   };
 
   const handleSendToKitchen = async () => {
+    if (checkingOut || sending) return;
     if (cart.length === 0) return;
     if (!customer || !customer.name || !(customer.phone || customer.mobile)) {
       showAlert(
@@ -320,6 +323,7 @@ export default function CartSidebar({ onAddCustomer }) {
         )}
       </div>
 
+<ComboPanel />
       {/* Summary Section */}
       <div className="p-6 bg-[#FBFBF2] border-t border-[#E8F5E9] rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.03)] space-y-4">
         <div className="space-y-2.5">

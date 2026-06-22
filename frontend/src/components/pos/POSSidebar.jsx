@@ -72,7 +72,7 @@ export default function POSSidebar() {
   return (
     <aside
       className={`${isSidebarOpen ? "w-64" : "w-20"
-        } relative sidebar-aurora text-white shadow-[0_20px_50px_rgba(9,22,15,0.45)] transition-all duration-500 flex flex-col rounded-[26px] my-4 ml-4 h-[calc(100vh-2rem)] overflow-hidden border border-white/10 shrink-0 z-50`}
+        } relative bg-gradient-to-br from-[#1A4D2E] via-[#153e26] to-[#0e2c1a] text-white shadow-[0_20px_50px_rgba(9,22,15,0.45)] transition-all duration-500 flex flex-col rounded-[26px] my-4 ml-4 h-[calc(100vh-2rem)] overflow-hidden border border-white/10 shrink-0 z-50`}
     >
       <div className="absolute inset-0 pointer-events-none">
         <span className="floating-orb absolute -right-6 top-24 h-24 w-24 rounded-full bg-white/10 blur-3xl" />

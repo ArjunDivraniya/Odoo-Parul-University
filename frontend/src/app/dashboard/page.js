@@ -399,7 +399,7 @@ export default function DashboardPage() {
                 categories.length > 0
                   ? categories.map((cat, idx) => {
                       const key = cat.toLowerCase().replace(/\s+/g, '');
-                      const colors = ['#1A4D2E', '#F4A460', '#4ADE80', '#8B5CF6', '#F59E0B'];
+                      const colors = ['#3E2B21', '#F4A460', '#EBE4D5', '#8B5CF6', '#F59E0B'];
                       return {
                         data: chartData.map((d) => d[key] || 0),
                         label: cat,
@@ -408,9 +408,9 @@ export default function DashboardPage() {
                       };
                     })
                   : [
-                      { data: chartData.map((d) => d.beverages || 0), label: "Beverages", color: "#1A4D2E" },
+                      { data: chartData.map((d) => d.beverages || 0), label: "Beverages", color: "#3E2B21" },
                       { data: chartData.map((d) => d.food || 0), label: "Food", color: "#F4A460" },
-                      { data: chartData.map((d) => d.desserts || 0), label: "Desserts", color: "#4ADE80" },
+                      { data: chartData.map((d) => d.desserts || 0), label: "Desserts", color: "#EBE4D5" },
                     ]
               }
               margin={{ left: 60, right: 20, top: 40, bottom: 40 }}
@@ -431,7 +431,7 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-bold text-[#3E2B21]">Top Selling Products</h3>
                 <p className="text-[#8C8775] text-sm mt-1 font-medium">Your most popular items by volume.</p>
               </div>
-              <Sparkles className="h-6 w-6 text-[#1A4D2E]" />
+              <Sparkles className="h-6 w-6 text-[#3E2B21]" />
             </div>
 
             <div className="grid md:grid-cols-2 gap-8 flex-1">
@@ -451,7 +451,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-[#8C8775] font-medium">{product.category}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-black text-[#1A4D2E] text-sm">{product.sold}</p>
+                        <p className="font-black text-[#6B4423] text-sm">{product.sold}</p>
                         <p className="text-[10px] text-[#8C8775] font-medium">sold</p>
                       </div>
                     </div>
@@ -488,9 +488,9 @@ export default function DashboardPage() {
                       series={[
                         {
                           data: [
-                            { id: 0, value: 30, label: "Coffee", color: "#1A4D2E" },
+                            { id: 0, value: 30, label: "Coffee", color: "#3E2B21" },
                             { id: 1, value: 20, label: "Tea", color: "#F4A460" },
-                            { id: 2, value: 15, label: "Snacks", color: "#4ADE80" },
+                            { id: 2, value: 15, label: "Snacks", color: "#EBE4D5" },
                           ],
                           innerRadius: 30,
                           outerRadius: 100,
@@ -537,7 +537,7 @@ export default function DashboardPage() {
                   }}
                   colors={{
                     type: 'sequential',
-                    scheme: 'greens',
+                    scheme: 'browns',
                     minValue: 0,
                     maxValue: 50
                   }}

@@ -34,6 +34,7 @@ export default function CouponsDashboardPage() {
     type: "PERCENTAGE",
     expiresAt: ""
   });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchCoupons();
@@ -62,6 +63,24 @@ export default function CouponsDashboardPage() {
 
   const handleCreateCoupon = async (e) => {
     e.preventDefault();
+    if (saving) return;
+
+    const trimmedCode = newCoupon.code.trim();
+    if (!trimmedCode) {
+      showAlert("Coupon Code is required.", "Validation Error", "error");
+      return;
+    }
+    const discountVal = Number(newCoupon.discount);
+    if (isNaN(discountVal) || discountVal <= 0) {
+      showAlert("Discount Value must be a positive number.", "Validation Error", "error");
+      return;
+    }
+    if (newCoupon.type === "PERCENTAGE" && discountVal > 100) {
+      showAlert("Percentage discount cannot exceed 100%.", "Validation Error", "error");
+      return;
+    }
+
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -74,7 +93,8 @@ export default function CouponsDashboardPage() {
         },
         body: JSON.stringify({
           ...newCoupon,
-          code: newCoupon.code.toUpperCase()
+          code: trimmedCode.toUpperCase(),
+          discount: discountVal
         })
       });
 
@@ -90,10 +110,14 @@ export default function CouponsDashboardPage() {
     } catch (error) {
       console.error("Failed to create coupon:", error);
       showAlert("Error creating coupon", "Create Coupon", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleToggleActive = async (id, currentStatus) => {
+    if (saving) return;
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -111,16 +135,25 @@ export default function CouponsDashboardPage() {
         setCoupons(prev => 
           prev.map(c => c.id === id ? { ...c, isActive: !currentStatus } : c)
         );
+        showToast("Coupon status updated successfully!", "success");
+      } else {
+        const err = await response.json();
+        showAlert(err.error || "Failed to update coupon status", "Update Coupon", "error");
       }
     } catch (error) {
       console.error("Failed to toggle coupon status:", error);
+      showAlert("Error updating coupon status", "Update Coupon", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDeleteCoupon = async (id) => {
+    if (saving) return;
     const confirmed = await showConfirm("Are you sure you want to delete this coupon?", "Delete Coupon");
     if (!confirmed) return;
 
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -140,6 +173,8 @@ export default function CouponsDashboardPage() {
     } catch (error) {
       console.error("Failed to delete coupon:", error);
       showAlert("Error deleting coupon", "Delete Coupon", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -368,7 +403,8 @@ export default function CouponsDashboardPage() {
                       <td className="px-6 py-5">
                         <button
                           onClick={() => handleToggleActive(coupon.id, coupon.isActive)}
-                          className="focus:outline-none transition-all"
+                          disabled={saving}
+                          className="focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {coupon.isActive ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7]">
@@ -388,7 +424,8 @@ export default function CouponsDashboardPage() {
                       <td className="px-6 py-5 text-right">
                         <button
                           onClick={() => handleDeleteCoupon(coupon.id)}
-                          className="h-9 w-9 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all"
+                          disabled={saving}
+                          className="h-9 w-9 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Trash2 className="h-3.5 w-3.5 text-red-500" />
                         </button>
@@ -408,7 +445,7 @@ export default function CouponsDashboardPage() {
       {showAddModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-          onClick={() => setShowAddModal(false)}
+          onClick={saving ? undefined : () => setShowAddModal(false)}
         >
           <div
             className="bg-white rounded-[32px] w-full max-w-md shadow-[0_25px_80px_rgba(62,43,33,0.18)]"
@@ -425,7 +462,8 @@ export default function CouponsDashboardPage() {
                 </div>
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors"
+                  disabled={saving}
+                  className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors disabled:opacity-50"
                 >
                   <X className="h-5 w-5 text-[#6B4423]" />
                 </button>
@@ -440,10 +478,11 @@ export default function CouponsDashboardPage() {
                 <input
                   type="text"
                   required
+                  disabled={saving}
                   placeholder="e.g. SAVE10"
                   value={newCoupon.code}
                   onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value })}
-                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] uppercase font-black text-lg text-[#3E2B21] placeholder:text-[#3E2B21]/20 placeholder:font-medium placeholder:text-sm placeholder:normal-case"
+                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] uppercase font-black text-lg text-[#3E2B21] placeholder:text-[#3E2B21]/20 placeholder:font-medium placeholder:text-sm placeholder:normal-case disabled:opacity-50"
                 />
               </div>
 
@@ -456,10 +495,11 @@ export default function CouponsDashboardPage() {
                     type="number"
                     step="0.01"
                     required
+                    disabled={saving}
                     placeholder="10"
                     value={newCoupon.discount}
                     onChange={e => setNewCoupon({ ...newCoupon, discount: e.target.value })}
-                    className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] font-bold text-[#3E2B21]"
+                    className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] font-bold text-[#3E2B21] disabled:opacity-50"
                   />
                 </div>
                 <div>
@@ -468,8 +508,9 @@ export default function CouponsDashboardPage() {
                   </label>
                   <select
                     value={newCoupon.type}
+                    disabled={saving}
                     onChange={e => setNewCoupon({ ...newCoupon, type: e.target.value })}
-                    className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none bg-[#FDFCF7] font-semibold text-[#3E2B21] text-sm"
+                    className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none bg-[#FDFCF7] font-semibold text-[#3E2B21] text-sm disabled:opacity-50"
                   >
                     <option value="PERCENTAGE">Percentage (%)</option>
                     <option value="FIXED">Fixed Amount (₹)</option>
@@ -483,23 +524,26 @@ export default function CouponsDashboardPage() {
                 </label>
                 <input
                   type="date"
+                  disabled={saving}
                   value={newCoupon.expiresAt}
                   onChange={e => setNewCoupon({ ...newCoupon, expiresAt: e.target.value })}
-                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] font-medium text-[#3E2B21]/60 text-sm"
+                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] font-medium text-[#3E2B21]/60 text-sm disabled:opacity-50"
                 />
               </div>
 
               <div className="flex gap-3 pt-3">
                 <button
                   type="submit"
-                  className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)]"
+                  disabled={saving}
+                  className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)] disabled:opacity-50"
                 >
-                  Create Coupon
+                  {saving ? "Creating..." : "Create Coupon"}
                 </button>
                 <button
                   type="button"
+                  disabled={saving}
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors"
+                  className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>

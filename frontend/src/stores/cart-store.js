@@ -293,8 +293,57 @@ export const CartProvider = ({ children }) => {
     setAppliedManualPromotions([]);
   };
 
+  // New action: Add a combo (multiple products) to the cart atomically
+  const addCombo = (comboId, comboProducts) => {
+    // comboProducts is expected to be an array of objects { product, variant? }
+    setCart(prevCart => {
+      // We'll copy existing cart and add each product using the existing addItem logic for consistency.
+      let updatedCart = [...prevCart];
+      comboProducts.forEach(item => {
+        const product = item.product;
+        const variant = item.variant || null;
+        // Reuse the same logic as addItem to generate a unique cartItemId and merge quantities.
+        const itemId = variant ? `${product.id}-${variant.id}` : product.id;
+        const existing = updatedCart.find(it => it.cartItemId === itemId);
+        if (existing) {
+          updatedCart = updatedCart.map(it =>
+            it.cartItemId === itemId ? { ...it, quantity: it.quantity + 1 } : it
+          );
+        } else {
+          updatedCart.push({
+            ...product,
+            cartItemId: itemId,
+            id: product.id,
+            price: variant ? Number(product.price) + Number(variant.extraPrice) : Number(product.price),
+            variantId: variant ? variant.id : null,
+            variantName: variant ? variant.name : null,
+            quantity: 1,
+            notes: ''
+          });
+        }
+      });
+      return updatedCart;
+    });
+  };
+
+  // New action: Add a combo as a single cart entry with its combo price
+  const addComboItem = (comboId, comboName, comboPrice) => {
+    const comboProduct = {
+      id: `combo-${comboId}`,
+      name: comboName,
+      price: Number(comboPrice),
+      imageUrl: null,
+      category: { name: 'Combo' },
+      isCombo: true
+    };
+    // Reuse addItem to insert the combo product
+    addItem(comboProduct, null);
+  };
+
   return (
     <CartContext.Provider value={{
+      addCombo,
+      addComboItem,
       cart,
       customer,
       orderId,

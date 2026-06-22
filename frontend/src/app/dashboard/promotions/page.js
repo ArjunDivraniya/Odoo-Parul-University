@@ -49,6 +49,7 @@ export default function PromotionsDashboardPage() {
   // Modal States
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingPromoId, setEditingPromoId] = useState(null);
+  const [saving, setSaving] = useState(false);
   
   // Form State
   const [form, setForm] = useState({
@@ -309,6 +310,7 @@ export default function PromotionsDashboardPage() {
 
       const method = editingPromoId ? 'PUT' : 'POST';
 
+      setSaving(true);
       const response = await fetch(url, {
         method,
         headers: {
@@ -330,10 +332,14 @@ export default function PromotionsDashboardPage() {
     } catch (error) {
       console.error(error);
       showAlert("An error occurred during save.", "Error Saving", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleToggleActive = async (id, currentStatus) => {
+    if (saving) return;
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -356,6 +362,8 @@ export default function PromotionsDashboardPage() {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -363,6 +371,7 @@ export default function PromotionsDashboardPage() {
     const confirmed = await showConfirm("Are you sure you want to delete this promotion?", "Delete Promotion");
     if (!confirmed) return;
 
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -381,6 +390,8 @@ export default function PromotionsDashboardPage() {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -721,8 +732,8 @@ export default function PromotionsDashboardPage() {
             <div className="bg-white rounded-3xl border border-[#EBE4D5] p-6 shadow-sm">
               <p className="text-[11px] font-black uppercase text-[#3E2B21]/50 tracking-wider">Promotion Conversion Rate</p>
               <div className="flex items-center justify-between mt-3">
-                <span className="text-[44px] font-black text-[#1A4D2E] leading-none">{analytics.promotionConversionRate}%</span>
-                <PercentSquare className="h-10 w-10 text-[#1A4D2E]" />
+                <span className="text-[44px] font-black text-[#3E2B21] leading-none">{analytics.promotionConversionRate}%</span>
+                <PercentSquare className="h-10 w-10 text-[#3E2B21]" />
               </div>
               <p className="text-xs font-semibold text-[#3E2B21]/40 mt-2">Paid orders with promotions vs total orders</p>
             </div>
@@ -1117,14 +1128,16 @@ export default function PromotionsDashboardPage() {
               <div className="flex gap-4 pt-6 border-t border-[#EBE4D5]">
                 <button
                   type="submit"
-                  className="flex-1 py-3.5 rounded-2xl bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-md text-center"
+                  disabled={saving}
+                  className="flex-1 py-3.5 rounded-2xl bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-md text-center disabled:opacity-50"
                 >
-                  {editingPromoId ? "Save Changes" : "Create Campaign"}
+                  {saving ? (editingPromoId ? "Saving Changes..." : "Creating Campaign...") : (editingPromoId ? "Save Changes" : "Create Campaign")}
                 </button>
                 <button
                   type="button"
+                  disabled={saving}
                   onClick={() => setShowFormModal(false)}
-                  className="flex-1 py-3.5 rounded-2xl border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-gray-50 transition-colors text-center"
+                  className="flex-1 py-3.5 rounded-2xl border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-gray-50 transition-colors text-center disabled:opacity-50"
                 >
                   Cancel
                 </button>

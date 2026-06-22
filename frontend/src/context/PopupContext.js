@@ -122,7 +122,7 @@ export const PopupProvider = ({ children }) => {
       {children}
 
       {/* Toast Notifications */}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+      <div className="fixed top-4 right-4 z-[100000] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => {
             const styles = getTypeStyles(toast.type);
@@ -156,7 +156,7 @@ export const PopupProvider = ({ children }) => {
       {/* Modal Dialog (Alert / Confirm) */}
       <AnimatePresence>
         {modal.isOpen && (
-          <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -172,7 +172,7 @@ export const PopupProvider = ({ children }) => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-[#FAF9F6] border border-coffee-200/50 p-6 shadow-premium-lg dark:bg-zinc-900 dark:border-zinc-800 pointer-events-auto"
+              className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-[#FAF9F6] border border-coffee-200/50 p-6 shadow-premium-lg dark:bg-zinc-900 dark:border-zinc-800 pointer-events-auto"
             >
               <div className="flex flex-col items-center text-center">
                 {/* Modal Icon */}

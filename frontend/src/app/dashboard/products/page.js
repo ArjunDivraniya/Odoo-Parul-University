@@ -25,6 +25,7 @@ export default function ProductsPage() {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -97,7 +98,7 @@ export default function ProductsPage() {
   /* ═══════════════════════════════════════════════════════ */
   /*  PRODUCT ADD/EDIT MODAL                                */
   /* ═══════════════════════════════════════════════════════ */
-  const ProductModal = ({ product, onClose, onSave }) => {
+  const ProductModal = ({ product, onClose, onSave, saving }) => {
     const initialData = product
       ? {
           ...product,
@@ -144,11 +145,49 @@ export default function ProductsPage() {
 
     const handleSubmit = async (e) => {
       e.preventDefault();
+      
+      // Client-side validations
+      if (!formData.name || !formData.name.trim()) {
+        showAlert("Product Name is required.", "Validation Error", "error");
+        return;
+      }
+      if (Number(formData.price) <= 0 || isNaN(Number(formData.price))) {
+        showAlert("Price must be a positive number.", "Validation Error", "error");
+        return;
+      }
+      if (Number(formData.tax) < 0 || isNaN(Number(formData.tax))) {
+        showAlert("Tax must be a non-negative number.", "Validation Error", "error");
+        return;
+      }
+      if (categoryMode === 'select' && !formData.categoryId) {
+        showAlert("Please select a category.", "Validation Error", "error");
+        return;
+      }
+      if (categoryMode === 'new' && !newCategoryName.trim()) {
+        showAlert("New Category Name is required.", "Validation Error", "error");
+        return;
+      }
+      
+      // Validate variants
+      if (formData.variants && formData.variants.length > 0) {
+        for (let i = 0; i < formData.variants.length; i++) {
+          const v = formData.variants[i];
+          if (!v.name || !v.name.trim()) {
+            showAlert(`Variant #${i + 1} must have a name.`, "Validation Error", "error");
+            return;
+          }
+          if (Number(v.extraPrice) < 0 || isNaN(Number(v.extraPrice))) {
+            showAlert(`Variant #${i + 1} extra price must be non-negative.`, "Validation Error", "error");
+            return;
+          }
+        }
+      }
+
       onSave({ ...formData, _newCategoryName: categoryMode === 'new' ? newCategoryName.trim() : null });
     };
 
     return (
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={saving ? undefined : onClose}>
         <div
           className="bg-white rounded-[32px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-[0_25px_80px_rgba(62,43,33,0.18)]"
           onClick={(e) => e.stopPropagation()}
@@ -165,7 +204,7 @@ export default function ProductsPage() {
                   {product ? 'Edit Product' : 'Add New Product'}
                 </h2>
               </div>
-              <button onClick={onClose} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors">
+              <button onClick={onClose} disabled={saving} className="h-10 w-10 rounded-full bg-[#F5EFE6] hover:bg-[#EBE4D5] flex items-center justify-center transition-colors disabled:opacity-50">
                 <X className="h-5 w-5 text-[#6B4423]" />
               </button>
             </div>
@@ -179,7 +218,8 @@ export default function ProductsPage() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
-                className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21]"
+                disabled={saving}
+                className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] disabled:opacity-50"
               />
             </div>
 
@@ -189,7 +229,8 @@ export default function ProductsPage() {
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] resize-none"
+                disabled={saving}
+                className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] resize-none disabled:opacity-50"
               />
             </div>
 
@@ -199,10 +240,12 @@ export default function ProductsPage() {
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   required
-                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21]"
+                  disabled={saving}
+                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] disabled:opacity-50"
                 />
               </div>
               <div>
@@ -210,9 +253,11 @@ export default function ProductsPage() {
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
                   value={formData.tax || '0'}
                   onChange={(e) => setFormData({ ...formData, tax: e.target.value })}
-                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21]"
+                  disabled={saving}
+                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none focus:ring-2 focus:ring-[#3E2B21]/10 bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] disabled:opacity-50"
                 />
               </div>
             </div>
@@ -224,23 +269,25 @@ export default function ProductsPage() {
                 <div className="flex rounded-full overflow-hidden border border-[#EBE4D5] text-[11px] font-bold">
                   <button
                     type="button"
+                    disabled={saving}
                     onClick={() => setCategoryMode('select')}
                     className={`px-3 py-1.5 transition-all ${
                       categoryMode === 'select'
                         ? 'bg-[#3E2B21] text-white'
                         : 'bg-[#FDFCF7] text-[#3E2B21]/60 hover:bg-[#F5EFE6]'
-                    }`}
+                    } disabled:opacity-50`}
                   >
                     Select Existing
                   </button>
                   <button
                     type="button"
+                    disabled={saving}
                     onClick={() => setCategoryMode('new')}
                     className={`px-3 py-1.5 transition-all ${
                       categoryMode === 'new'
                         ? 'bg-[#3E2B21] text-white'
                         : 'bg-[#FDFCF7] text-[#3E2B21]/60 hover:bg-[#F5EFE6]'
-                    }`}
+                    } disabled:opacity-50`}
                   >
                     + Create New
                   </button>
@@ -252,7 +299,8 @@ export default function ProductsPage() {
                   value={formData.categoryId}
                   onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                   required
-                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none bg-[#FDFCF7] text-sm font-medium text-[#3E2B21]"
+                  disabled={saving}
+                  className="w-full px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] disabled:opacity-50"
                 >
                   <option value="">Select a category...</option>
                   {categories.map(cat => (
@@ -267,7 +315,8 @@ export default function ProductsPage() {
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     required
-                    className="w-full px-4 py-3.5 rounded-[18px] border border-[#3E2B21]/20 focus:border-[#3E2B21]/40 focus:outline-none bg-[#FDFCF7] text-sm font-medium text-[#3E2B21]"
+                    disabled={saving}
+                    className="w-full px-4 py-3.5 rounded-[18px] border border-[#3E2B21]/20 focus:border-[#3E2B21]/40 focus:outline-none bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] disabled:opacity-50"
                   />
                   <p className="text-[11px] text-[#3E2B21]/40 mt-1.5 font-medium">
                     ✨ This will create a new category and assign it to the product.
@@ -281,8 +330,9 @@ export default function ProductsPage() {
                 <input
                   type="checkbox"
                   checked={formData.isAvailable}
+                  disabled={saving}
                   onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
-                  className="w-4.5 h-4.5 rounded border-[#EBE4D5] accent-[#3E2B21]"
+                  className="w-4.5 h-4.5 rounded border-[#EBE4D5] accent-[#3E2B21] disabled:opacity-50"
                 />
                 <span className="text-sm font-semibold text-[#3E2B21]/70">Available for Sale</span>
               </label>
@@ -291,8 +341,9 @@ export default function ProductsPage() {
                 <input
                   type="checkbox"
                   checked={formData.sendToKitchen}
+                  disabled={saving}
                   onChange={(e) => setFormData({ ...formData, sendToKitchen: e.target.checked })}
-                  className="w-4.5 h-4.5 rounded border-[#EBE4D5] accent-[#3E2B21]"
+                  className="w-4.5 h-4.5 rounded border-[#EBE4D5] accent-[#3E2B21] disabled:opacity-50"
                 />
                 <span className="text-sm font-semibold text-[#3E2B21]/70">Send to Kitchen</span>
               </label>
@@ -306,8 +357,9 @@ export default function ProductsPage() {
                   type="url"
                   placeholder="https://images.unsplash.com/..."
                   value={formData.imageUrl || ''}
+                  disabled={saving}
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="flex-1 px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none bg-[#FDFCF7] text-sm font-medium text-[#3E2B21]"
+                  className="flex-1 px-4 py-3.5 rounded-[18px] border border-[#EBE4D5] focus:border-[#3E2B21]/30 focus:outline-none bg-[#FDFCF7] text-sm font-medium text-[#3E2B21] disabled:opacity-50"
                 />
                 {formData.imageUrl && (
                   <div className="h-12 w-12 rounded-[14px] overflow-hidden border border-[#EBE4D5] shrink-0">
@@ -324,8 +376,9 @@ export default function ProductsPage() {
                 <label className="text-[11px] font-bold text-[#3E2B21]/40 tracking-wider uppercase">Variants / Add-ons</label>
                 <button
                   type="button"
+                  disabled={saving}
                   onClick={handleAddVariant}
-                  className="text-[12px] flex items-center gap-1.5 text-[#6B4423] hover:text-[#3E2B21] font-bold transition-colors"
+                  className="text-[12px] flex items-center gap-1.5 text-[#6B4423] hover:text-[#3E2B21] font-bold transition-colors disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5" /> Add Variant
                 </button>
@@ -338,8 +391,9 @@ export default function ProductsPage() {
                       type="text"
                       placeholder="Name (e.g. Large)"
                       value={variant.name}
+                      disabled={saving}
                       onChange={(e) => handleVariantChange(index, "name", e.target.value)}
-                      className="flex-[2] px-3.5 py-2.5 rounded-[14px] border border-[#EBE4D5] text-sm font-medium bg-[#FDFCF7] text-[#3E2B21]"
+                      className="flex-[2] px-3.5 py-2.5 rounded-[14px] border border-[#EBE4D5] text-sm font-medium bg-[#FDFCF7] text-[#3E2B21] disabled:opacity-50"
                       required
                     />
                     <div className="flex-1 relative">
@@ -347,16 +401,19 @@ export default function ProductsPage() {
                       <input
                         type="number"
                         step="0.01"
+                        min="0"
                         placeholder="Extra"
                         value={variant.extraPrice}
+                        disabled={saving}
                         onChange={(e) => handleVariantChange(index, "extraPrice", e.target.value)}
-                        className="w-full pl-7 pr-3 py-2.5 rounded-[14px] border border-[#EBE4D5] text-sm font-medium bg-[#FDFCF7] text-[#3E2B21]"
+                        className="w-full pl-7 pr-3 py-2.5 rounded-[14px] border border-[#EBE4D5] text-sm font-medium bg-[#FDFCF7] text-[#3E2B21] disabled:opacity-50"
                       />
                     </div>
                     <button
                       type="button"
+                      disabled={saving}
                       onClick={() => handleRemoveVariant(index)}
-                      className="h-9 w-9 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors shrink-0"
+                      className="h-9 w-9 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors shrink-0 disabled:opacity-50"
                     >
                       <Trash2 className="h-3.5 w-3.5 text-red-500" />
                     </button>
@@ -371,14 +428,16 @@ export default function ProductsPage() {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)]"
+                disabled={saving}
+                className="flex-1 py-3.5 rounded-[18px] bg-[#3E2B21] text-white font-bold text-sm hover:bg-[#2C1810] transition-colors shadow-[0_4px_12px_rgba(62,43,33,0.2)] disabled:opacity-50"
               >
-                {product ? 'Update Product' : 'Add Product'}
+                {saving ? (product ? 'Updating...' : 'Saving...') : (product ? 'Update Product' : 'Add Product')}
               </button>
               <button
                 type="button"
+                disabled={saving}
                 onClick={onClose}
-                className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors"
+                className="flex-1 py-3.5 rounded-[18px] border-2 border-[#3E2B21] text-[#3E2B21] font-bold text-sm hover:bg-[#3E2B21]/5 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -390,6 +449,7 @@ export default function ProductsPage() {
   };
 
   const handleSaveProduct = async (formData) => {
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -428,18 +488,18 @@ export default function ProductsPage() {
       const method = editingProduct ? 'PUT' : 'POST';
 
       const payload = {
-        name: formData.name,
-        description: formData.description,
-        price: formData.price,
-        tax: formData.tax,
+        name: formData.name.trim(),
+        description: formData.description ? formData.description.trim() : null,
+        price: Number(formData.price),
+        tax: Number(formData.tax) || 0,
         categoryId: resolvedCategoryId,
         isAvailable: formData.isAvailable,
         sendToKitchen: formData.sendToKitchen,
-        imageUrl: formData.imageUrl,
+        imageUrl: formData.imageUrl ? formData.imageUrl.trim() : null,
         unit: formData.unit || undefined,
         variants: formData.variants?.map(v => ({
-          name: v.name,
-          extraPrice: v.extraPrice
+          name: v.name.trim(),
+          extraPrice: Number(v.extraPrice) || 0
         }))
       };
 
@@ -453,7 +513,7 @@ export default function ProductsPage() {
       });
 
       if (response.ok) {
-        fetchProducts();
+        await fetchProducts();
         setShowAddModal(false);
         setEditingProduct(null);
         showToast("Product saved successfully!", "success");
@@ -465,6 +525,8 @@ export default function ProductsPage() {
     } catch (error) {
       console.error('Failed to save product:', error);
       showAlert(`Failed to save product: ${error.message}`, "Save Product", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -472,6 +534,7 @@ export default function ProductsPage() {
     const confirmed = await showConfirm('Are you sure you want to delete this product?', 'Delete Product');
     if (!confirmed) return;
 
+    setSaving(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
       const token = localStorage.getItem('token');
@@ -483,7 +546,7 @@ export default function ProductsPage() {
 
       if (response.ok) {
         showToast("Product deleted successfully!", "success");
-        fetchProducts();
+        await fetchProducts();
       } else {
         const err = await response.json();
         console.error("Backend Error:", err);
@@ -496,6 +559,8 @@ export default function ProductsPage() {
     } catch (error) {
       console.error('Failed to delete product:', error);
       showAlert(`Failed to delete product: ${error.message}`, "Delete Product", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -826,13 +891,15 @@ export default function ProductsPage() {
                         setEditingProduct(product);
                         setShowAddModal(true);
                       }}
-                      className="h-9 w-9 rounded-full border border-[#EBE4D5] hover:border-[#3E2B21]/20 hover:bg-[#F5EFE6] flex items-center justify-center transition-all"
+                      disabled={saving}
+                      className="h-9 w-9 rounded-full border border-[#EBE4D5] hover:border-[#3E2B21]/20 hover:bg-[#F5EFE6] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Edit2 className="h-3.5 w-3.5 text-[#6B4423]" />
                     </button>
                     <button
                       onClick={() => handleDeleteProduct(product.id)}
-                      className="h-9 w-9 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all"
+                      disabled={saving}
+                      className="h-9 w-9 rounded-full border border-red-100 hover:bg-red-50 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="h-3.5 w-3.5 text-red-500" />
                     </button>
@@ -863,6 +930,7 @@ export default function ProductsPage() {
             setEditingProduct(null);
           }}
           onSave={handleSaveProduct}
+          saving={saving}
         />
       )}
     </div>
