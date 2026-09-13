@@ -1,17 +1,19 @@
-// frontend/src/app/pos/payment/page.js
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, CreditCard, Smartphone, ArrowLeft, Check, AlertCircle } from "lucide-react";
+import { DollarSign, CreditCard, Smartphone, ArrowLeft, Check, AlertCircle, Printer, Download } from "lucide-react";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { useCartStore } from "@/stores/cart-store";
 import { getSocket } from "@/lib/socket";
 import { usePopup } from "@/context/PopupContext";
-
+import { useSettings } from "@/context/SettingsContext";
+import { jsPDF } from "jspdf";
+import PrintableReceipt from "@/components/pos/PrintableReceipt";
 
 export default function POSPaymentPage() {
   const { clearCart } = useCartStore();
   const { showToast, showAlert, showConfirm } = usePopup();
+  const { cafeName, receiptFooter, currency = "₹" } = useSettings();
   const [order, setOrder] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [amountReceived, setAmountReceived] = useState("");
@@ -56,7 +58,16 @@ export default function POSPaymentPage() {
   }, []);
 
   const fetchOrderDetails = async () => {
-    const payingOrderId = localStorage.getItem('payingOrderId');
+    let payingOrderId = localStorage.getItem('payingOrderId');
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const paramOrderId = searchParams.get('orderId');
+      if (paramOrderId) {
+        payingOrderId = paramOrderId;
+        localStorage.setItem('payingOrderId', paramOrderId);
+      }
+    }
+
     if (!payingOrderId) {
       showAlert("No active checkout order found", "Payment Process", "error").then(() => {
         window.location.href = '/pos/terminal';
@@ -230,7 +241,7 @@ export default function POSPaymentPage() {
         key: rzOrder.key,
         amount: rzOrder.amount,
         currency: rzOrder.currency,
-        name: "Odoo Cafe",
+        name: cafeName,
         description: `Payment for Order ${order.orderNumber}`,
         image: "/odoo_cafe_logo.png",
         order_id: rzOrder.id,
@@ -347,7 +358,7 @@ export default function POSPaymentPage() {
       `- ${item.quantity}x ${item.productName}${item.variantName ? ` (${item.variantName})` : ''} - ₹${(Number(item.price) * item.quantity).toFixed(2)}`
     ).join('\n');
 
-    const message = `*Odoo Cafe Receipt*\n--------------------------\nOrder: ${order.orderNumber}\nDate: ${new Date(order.updatedAt || order.createdAt).toLocaleString()}\nTable: ${tableName}\nCustomer: ${order.customerName || 'Guest'}\n--------------------------\nItems:\n${itemsText}\n--------------------------\nSubtotal: ₹${subtotal.toFixed(2)}\n${discount > 0 ? `Discount: -₹${discount.toFixed(2)}\n` : ''}${tax > 0 ? `Tax: ₹${tax.toFixed(2)}\n` : ''}Total Amount: ₹${total.toFixed(2)}\n--------------------------\nPayment Method: ${paymentMethodDisplay}\nThank you for dining with us!`;
+    const message = `*${cafeName} Receipt*\n--------------------------\nOrder: ${order.orderNumber}\nDate: ${new Date(order.updatedAt || order.createdAt).toLocaleString()}\nTable: ${tableName}\nCustomer: ${order.customerName || 'Guest'}\n--------------------------\nItems:\n${itemsText}\n--------------------------\nSubtotal: ₹${subtotal.toFixed(2)}\n${discount > 0 ? `Discount: -₹${discount.toFixed(2)}\n` : ''}${tax > 0 ? `Tax: ₹${tax.toFixed(2)}\n` : ''}Total Amount: ₹${total.toFixed(2)}\n--------------------------\nPayment Method: ${paymentMethodDisplay}\n${receiptFooter}`;
 
     const cleanNum = whatsappNumber.replace(/\D/g, '');
     const phone = cleanNum.length === 10 ? '91' + cleanNum : cleanNum;
@@ -371,24 +382,115 @@ export default function POSPaymentPage() {
     );
   }
 
-  if (processing) {
+  if (!order) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#FBFBF2]/90 backdrop-blur-sm fixed inset-0 z-50">
-        <CoffeeLoader size="xl" text="Processing Payment..." />
+      <div className="h-screen flex items-center justify-center bg-[#FBFBF2]">
+        <CoffeeLoader size="xl" text="Fetching Receipt..." />
       </div>
     );
   }
 
-  if (orderComplete) {
-    const subtotal = order.items.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-    const tax = Number(order.taxAmount) || 0;
-    const discount = Number(order.discountAmount) || 0;
-    const total = Number(order.totalAmount);
-    const tableName = order.table ? order.table.name : 'Takeaway';
-    const paymentMethodDisplay = order.payments && order.payments.length > 0 ? order.payments.map(p => p.method).join(', ') : paymentMethod;
+  const subtotal = order.items?.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0) || 0;
+  const tax = Number(order.taxAmount) || 0;
+  const discount = Number(order.discountAmount) || 0;
+  const total = Number(order.totalAmount) || (subtotal + tax - discount);
+  const tableName = order.table ? order.table.name : 'Takeaway';
+
+  if (order?.paymentStatus === 'PAID' || orderComplete) {
+    const handleDownloadPDF = () => {
+      if (!order) return;
+      try {
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.width;
+        let yPos = 20;
+
+        doc.setFontSize(18);
+        doc.setFont("helvetica", "bold");
+        doc.text((cafeName || "CAFE").toUpperCase(), pageWidth / 2, yPos, { align: "center" });
+        yPos += 8;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("*** TAX INVOICE / BILL ***", pageWidth / 2, yPos, { align: "center" });
+        yPos += 8;
+        doc.text("----------------------------------------------------------------", pageWidth / 2, yPos, { align: "center" });
+        yPos += 8;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Order #: ${order.orderNumber}`, 20, yPos);
+        doc.text(`Date: ${new Date(order.updatedAt || order.createdAt || Date.now()).toLocaleString()}`, pageWidth - 20, yPos, { align: "right" });
+        yPos += 6;
+
+        doc.text(`Service: ${tableName}`, 20, yPos);
+        if (order.customerName) {
+          doc.text(`Customer: ${order.customerName}`, pageWidth - 20, yPos, { align: "right" });
+        }
+        yPos += 8;
+        doc.text("----------------------------------------------------------------", pageWidth / 2, yPos, { align: "center" });
+        yPos += 8;
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Qty", 20, yPos);
+        doc.text("Item Name", 40, yPos);
+        doc.text("Price", 140, yPos, { align: "right" });
+        doc.text("Amount", 190, yPos, { align: "right" });
+        yPos += 6;
+        doc.setFont("helvetica", "normal");
+
+        let itemSubtotal = 0;
+        order.items?.forEach(item => {
+          const itemTotal = Number(item.price) * item.quantity;
+          itemSubtotal += itemTotal;
+
+          doc.text(String(item.quantity) + "x", 20, yPos);
+          const splitTitle = doc.splitTextToSize(item.productName + (item.variantName ? ` (${item.variantName})` : ''), 90);
+          doc.text(splitTitle, 40, yPos);
+          doc.text(`${currency}${Number(item.price).toFixed(2)}`, 140, yPos, { align: "right" });
+          doc.text(`${currency}${itemTotal.toFixed(2)}`, 190, yPos, { align: "right" });
+
+          yPos += (6 * Math.max(1, splitTitle.length));
+        });
+
+        yPos += 4;
+        doc.text("----------------------------------------------------------------", pageWidth / 2, yPos, { align: "center" });
+        yPos += 8;
+
+        doc.text(`Subtotal:`, 130, yPos);
+        doc.text(`${currency}${subtotal.toFixed(2)}`, 190, yPos, { align: "right" });
+        yPos += 6;
+
+        if (discount > 0) {
+          doc.text(`Discount:`, 130, yPos);
+          doc.text(`-${currency}${discount.toFixed(2)}`, 190, yPos, { align: "right" });
+          yPos += 6;
+        }
+
+        if (tax > 0) {
+          doc.text(`Tax:`, 130, yPos);
+          doc.text(`${currency}${tax.toFixed(2)}`, 190, yPos, { align: "right" });
+          yPos += 6;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(`TOTAL AMOUNT:`, 130, yPos);
+        doc.text(`${currency}${total.toFixed(2)}`, 190, yPos, { align: "right" });
+        yPos += 12;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(receiptFooter || "Thank you for dining with us!", pageWidth / 2, yPos, { align: "center" });
+
+        doc.save(`Bill-${order.orderNumber}.pdf`);
+      } catch (err) {
+        console.error("PDF generation error:", err);
+      }
+    };
 
     return (
       <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#1A4D2E] to-[#143d24] p-4 overflow-y-auto">
+        <PrintableReceipt order={order} />
         <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 max-w-lg w-full text-center border border-[#E8F5E9] my-8 relative">
           <div className="h-16 w-16 bg-[#4ADE80] rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
             <Check className="h-8 w-8 text-white" />
@@ -406,30 +508,30 @@ export default function POSPaymentPage() {
               {order.items.map(item => (
                 <div key={item.id} className="flex justify-between text-xs text-gray-600">
                   <span>{item.quantity}x {item.productName}</span>
-                  <span className="font-semibold">₹{(Number(item.price) * item.quantity).toFixed(2)}</span>
+                  <span className="font-semibold">{currency}{(Number(item.price) * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
             </div>
             <div className="border-t border-dashed border-gray-200 pt-2 space-y-1.5 text-xs text-gray-500">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span>{currency}{subtotal.toFixed(2)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-red-500 font-semibold">
                   <span>Discount</span>
-                  <span>-₹{discount.toFixed(2)}</span>
+                  <span>-{currency}{discount.toFixed(2)}</span>
                 </div>
               )}
               {tax > 0 && (
                 <div className="flex justify-between">
                   <span>Tax</span>
-                  <span>₹{tax.toFixed(2)}</span>
+                  <span>{currency}{tax.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-black text-[#1A4D2E] pt-2 border-t border-gray-100">
                 <span>Total</span>
-                <span>₹{total.toFixed(2)}</span>
+                <span>{currency}{total.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -442,32 +544,34 @@ export default function POSPaymentPage() {
           )}
 
           {/* Actions */}
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               onClick={() => window.print()}
-              className="w-full py-3 bg-white border-2 border-[#1A4D2E] text-[#1A4D2E] font-bold rounded-2xl hover:bg-[#E8F5E9] transition-all text-sm shadow-sm"
+              className="py-3 bg-[#3E2B21] text-white font-bold rounded-2xl hover:bg-[#2C1810] transition-all text-sm shadow-md flex items-center justify-center gap-2"
             >
-              Print Receipt
+              <Printer className="h-4 w-4" /> Print Thermal Bill
             </button>
             <button
-              onClick={() => {
-                localStorage.removeItem('selectedTable');
-                window.location.href = '/pos/tables';
-              }}
-              className="w-full py-3 bg-[#1A4D2E] text-white font-bold rounded-2xl hover:bg-[#143d24] transition-all text-sm shadow-md"
+              onClick={handleDownloadPDF}
+              className="py-3 bg-white border-2 border-[#3E2B21] text-[#3E2B21] font-bold rounded-2xl hover:bg-[#FDFCF7] transition-all text-sm shadow-sm flex items-center justify-center gap-2"
             >
-              Start New Order
+              <Download className="h-4 w-4" /> Download PDF Bill
             </button>
           </div>
+
+          <button
+            onClick={() => {
+              localStorage.removeItem('selectedTable');
+              window.location.href = '/pos/tables';
+            }}
+            className="w-full py-3 bg.emerald-600 text-white bg-[#1A4D2E] hover:bg-[#143d24] font-bold rounded-2xl transition-all text-sm shadow-md"
+          >
+            Start New Order
+          </button>
         </div>
       </div>
     );
   }
-
-  const subtotal = order.items.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-  const tax = Number(order.taxAmount) || 0;
-  const discount = Number(order.discountAmount) || 0;
-  const total = Number(order.totalAmount);
 
   return (
     <div className="h-screen flex bg-gradient-to-br from-[#1A4D2E] to-[#143d24] p-8">

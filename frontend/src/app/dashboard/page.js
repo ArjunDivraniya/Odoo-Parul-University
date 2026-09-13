@@ -34,7 +34,10 @@ const ResponsiveHeatMap = dynamic(
   { ssr: false }
 );
 
+import { useSettings } from "@/context/SettingsContext";
+
 export default function DashboardPage() {
+  const { cafeName, currency = "₹" } = useSettings();
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [salesTrends, setSalesTrends] = useState([]);
@@ -77,8 +80,10 @@ export default function DashboardPage() {
           ...prev,
           totalRevenue: prev.totalRevenue + amount,
           periodRevenue: prev.periodRevenue + amount,
-          completedOrders: prev.completedOrders + 1,
-          pendingOrders: Math.max(0, prev.pendingOrders - 1)
+          periodOrders: prev.periodOrders + 1,
+          totalOrders: prev.totalOrders + 1,
+          pendingOrders: prev.pendingOrders + 1,
+          openOrders: prev.openOrders + 1
         };
       });
     };
@@ -246,7 +251,9 @@ export default function DashboardPage() {
 
   const chartData = salesTrends.length > 0 ? salesTrends : [];
   const radarData = topProducts.length > 0 ? topProducts : [];
-  const openOrders = stats?.totalOrders || recentOrders.length || 0;
+  const openOrders = stats?.openOrders !== undefined 
+    ? stats.openOrders 
+    : ((stats?.pendingOrders || 0) + (stats?.preparingOrders || 0));
   const activeStaff = stats?.totalUsers || 1;
 
   /* ✅ Loading Spinner */
@@ -267,7 +274,7 @@ export default function DashboardPage() {
         <div className="relative flex-1 bg-[#FDFCF7] rounded-[32px] p-10 shadow-[0_2px_15px_rgba(0,0,0,0.02)] border border-[#F0EBE1] overflow-hidden flex flex-col justify-between min-h-[340px]">
           <div className="relative z-10 max-w-lg space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-transparent text-[#3E2B21] text-sm font-bold border border-[#EBE4D5]">
-              <span className="text-base">👋</span> Welcome back to Odoo Cafe
+              <span className="text-base">👋</span> Welcome back to {cafeName}
             </div>
 
             <div>
@@ -338,11 +345,11 @@ export default function DashboardPage() {
               </div>
             </div>
             
-            <div className="rounded-[32px] bg-white border border-[#F0EBE1] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex flex-col justify-between">
-              <p className="text-[#8C8775] text-sm font-bold">Active Staff</p>
+            <div className="rounded-[32px] bg-[#3E2B21] text-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+              <p className="text-white/70 text-sm font-bold">Active Staff</p>
               <div className="flex items-end justify-between mt-auto">
-                <p className="text-[40px] font-black text-[#3E2B21] leading-none">{activeStaff}</p>
-                <div className="h-[46px] w-[46px] rounded-full bg-[#FDFCF7] flex items-center justify-center text-[#A8A396] border border-[#F0EBE1]">
+                <p className="text-[40px] font-black text-white leading-none">{activeStaff}</p>
+                <div className="h-[46px] w-[46px] rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10">
                   <Users className="h-[22px] w-[22px]" />
                 </div>
               </div>
@@ -354,26 +361,29 @@ export default function DashboardPage() {
 
       {/* ✅ STATS GRID */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard title="Total Revenue" value={`₹${stats?.totalRevenue || 0}`} icon={DollarSign} />
+        <StatsCard title="Total Revenue" value={`${currency}${Number(stats?.totalRevenue || 0).toLocaleString()}`} icon={DollarSign} subtext="All-time gross revenue" />
         <StatsCard 
           title={`${activeRange.charAt(0).toUpperCase() + activeRange.slice(1)}'s Revenue`} 
-          value={`₹${stats?.periodRevenue || 0}`} 
+          value={`${currency}${Number(stats?.periodRevenue || 0).toLocaleString()}`} 
           icon={TrendingUp} 
+          subtext={`Revenue in ${activeRange}`}
         />
         <StatsCard 
           title={`Orders (${activeRange})`} 
           value={stats?.periodOrders || 0} 
           icon={ShoppingBag} 
+          subtext={`Total orders in ${activeRange}`}
         />
-        <StatsCard title="Pending Orders" value={stats?.pendingOrders || 0} icon={Clock} />
-        <StatsCard title="Preparing Orders" value={stats?.preparingOrders || 0} icon={ChefHat} />
+        <StatsCard title="Pending Orders" value={stats?.pendingOrders || 0} icon={Clock} subtext="Awaiting cooking/kitchen" />
+        <StatsCard title="Preparing Orders" value={stats?.preparingOrders || 0} icon={ChefHat} subtext="Currently cooking" />
         <StatsCard 
           title={`Completed (${activeRange})`} 
           value={stats?.completedOrders || 0} 
           icon={CheckCircle} 
+          subtext={`Completed in ${activeRange}`}
         />
-        <StatsCard title="Occupied Tables" value={stats?.occupiedTables || 0} icon={Users} />
-        <StatsCard title="Available Tables" value={stats?.availableTables || 0} icon={Coffee} />
+        <StatsCard title="Occupied Tables" value={stats?.occupiedTables || 0} icon={Users} subtext="Currently seated tables" />
+        <StatsCard title="Available Tables" value={stats?.availableTables || 0} icon={Coffee} subtext="Empty ready tables" />
       </section>
 
       {/* ✅ CHARTS & ACTIVITY */}
@@ -537,7 +547,7 @@ export default function DashboardPage() {
                   }}
                   colors={{
                     type: 'sequential',
-                    scheme: 'browns',
+                    scheme: 'yellow_orange_brown',
                     minValue: 0,
                     maxValue: 50
                   }}

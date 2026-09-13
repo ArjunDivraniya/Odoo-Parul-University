@@ -1,8 +1,23 @@
 const prisma = require('../lib/prisma');
 
+const getShopOrderWhere = async (shopId) => {
+  if (!shopId) return {};
+  const shopUsers = await prisma.user.findMany({
+    where: { shopId },
+    select: { id: true }
+  });
+  const userIds = shopUsers.map(u => u.id);
+  return {
+    OR: [
+      { userId: { in: userIds } },
+      { userId: null }
+    ]
+  };
+};
+
 exports.getStats = async (req, res) => {
   try {
-    const shopId = req.user.shopId;
+    const shopId = req.user?.shopId;
     const { range = 'day' } = req.query;
     const now = new Date();
     let startDate = new Date();
@@ -21,19 +36,17 @@ exports.getStats = async (req, res) => {
       startDate.setHours(0, 0, 0, 0);
     }
 
-    // Multi-tenant filtering: Get all user IDs belonging to this shop
-    let orderWhere = {};
-    if (shopId) {
-      const shopUsers = await prisma.user.findMany({
-        where: { shopId },
-        select: { id: true }
-      });
-      const userIds = shopUsers.map(u => u.id);
-      orderWhere = { userId: { in: userIds } };
-    }
+    const orderWhere = await getShopOrderWhere(shopId);
 
-    const periodStatusWhere = {
-      status: { in: ['PAID', 'COMPLETED'] },
+    const periodPaidWhere = {
+      paymentStatus: 'PAID',
+      status: { in: ['PAID', 'SENT', 'PREPARING', 'COMPLETED'] },
+      createdAt: { gte: startDate },
+      ...orderWhere
+    };
+
+    const periodCompletedWhere = {
+      status: 'COMPLETED',
       createdAt: { gte: startDate },
       ...orderWhere
     };
@@ -45,54 +58,62 @@ exports.getStats = async (req, res) => {
       pendingOrders,
       preparingOrders,
       completedOrdersInPeriod,
+      openOrdersCount,
       occupiedTables,
       availableTables,
       totalUsers
     ] = await Promise.all([
-      // Total Revenue (all time PAID/COMPLETED orders)
+      // Total Revenue (all time paid or completed orders)
       prisma.order.aggregate({
         _sum: { totalAmount: true },
         where: { 
-          status: { in: ['PAID', 'COMPLETED'] },
+          paymentStatus: 'PAID',
+          status: { in: ['PAID', 'SENT', 'PREPARING', 'COMPLETED'] },
           ...orderWhere
         }
       }),
-      // Period Revenue (PAID/COMPLETED in range)
+      // Period Revenue (paid/completed in range)
       prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: periodStatusWhere
+        where: periodPaidWhere
       }),
-      // Period Orders (Total orders in range except CANCELLED)
+      // Period Orders (Total paid/active orders in range)
+      prisma.order.count({
+        where: periodPaidWhere
+      }),
+      // Pending Orders (Awaiting cooking/kitchen - status PAID or SENT in range)
       prisma.order.count({
         where: { 
+          status: { in: ['PAID', 'SENT'] },
           createdAt: { gte: startDate },
-          status: { not: 'CANCELLED' },
           ...orderWhere
         }
       }),
-      // Pending Orders (SENT status) - Real-time workload
-      prisma.order.count({
-        where: { 
-          status: 'SENT',
-          ...orderWhere
-        }
-      }),
-      // Preparing Orders (PREPARING status) - Real-time workload
+      // Preparing Orders (PREPARING status - Currently cooking in range)
       prisma.order.count({
         where: { 
           status: 'PREPARING',
+          createdAt: { gte: startDate },
           ...orderWhere
         }
       }),
-      // Completed Orders in this period
+      // Completed Orders in this period (status COMPLETED in range)
       prisma.order.count({
-        where: periodStatusWhere
+        where: periodCompletedWhere
       }),
-      // Occupied Tables - Global for now as tables lack shopId
+      // Open Orders Count (PAID, SENT, or PREPARING awaiting completion in range)
+      prisma.order.count({
+        where: {
+          status: { in: ['PAID', 'SENT', 'PREPARING'] },
+          createdAt: { gte: startDate },
+          ...orderWhere
+        }
+      }),
+      // Occupied Tables
       prisma.table.count({
         where: { status: 'OCCUPIED' }
       }),
-      // Available Tables - Global for now
+      // Available Tables
       prisma.table.count({
         where: { status: 'AVAILABLE' }
       }),
@@ -109,10 +130,11 @@ exports.getStats = async (req, res) => {
       pendingOrders: Number(pendingOrders || 0),
       preparingOrders: Number(preparingOrders || 0),
       completedOrders: Number(completedOrdersInPeriod || 0),
+      openOrders: Number(openOrdersCount || 0),
       occupiedTables: Number(occupiedTables || 0),
       availableTables: Number(availableTables || 0),
-      totalOrders: Number(periodOrders || 0), // Fallback for hero section
-      totalUsers: Number(totalUsers || 0)      // Fallback for hero section
+      totalOrders: Number(periodOrders || 0),
+      totalUsers: Number(totalUsers || 0)
     });
   } catch (error) {
     console.error("Dashboard Stats Error:", error);
@@ -122,11 +144,10 @@ exports.getStats = async (req, res) => {
 
 exports.getRecentOrders = async (req, res) => {
   try {
-    const shopId = req.user.shopId;
+    const shopId = req.user?.shopId;
+    const orderWhere = await getShopOrderWhere(shopId);
     const recentOrders = await prisma.order.findMany({
-      where: {
-        user: shopId ? { shopId } : undefined
-      },
+      where: orderWhere,
       take: 5,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -159,20 +180,17 @@ exports.getRecentOrders = async (req, res) => {
 exports.getSalesChart = async (req, res) => {
     // Return last 7 days sales
     try {
-        const shopId = req.user.shopId;
+        const shopId = req.user?.shopId;
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
-        // For raw queries, multi-tenancy is trickier if we don't have shopId on Order.
-        // Let's use Prisma findMany and aggregate in JS for safety or complex join.
-        // Given shopId is on User, we need to join.
-        
+        const orderWhere = await getShopOrderWhere(shopId);
         const orders = await prisma.order.findMany({
             where: {
                 createdAt: { gte: sevenDaysAgo },
                 status: { in: ['PAID', 'COMPLETED'] },
-                user: shopId ? { shopId } : undefined
+                ...orderWhere
             },
             select: {
                 createdAt: true,
@@ -202,7 +220,7 @@ exports.getSalesChart = async (req, res) => {
 // Get sales trends for line chart (by category and time range)
 exports.getSalesTrends = async (req, res) => {
   try {
-    const shopId = req.user.shopId;
+    const shopId = req.user?.shopId;
     const { range = 'day' } = req.query;
     const now = new Date();
     let startDate = new Date();
@@ -226,12 +244,14 @@ exports.getSalesTrends = async (req, res) => {
       groupBy = 'month';
     }
 
+    const orderWhere = await getShopOrderWhere(shopId);
+
     // Get orders with items and products for the given range and shop
     const orders = await prisma.order.findMany({
       where: {
         createdAt: { gte: startDate },
         status: { in: ['PAID', 'COMPLETED'] },
-        user: shopId ? { shopId } : undefined
+        ...orderWhere
       },
       select: {
         createdAt: true,
@@ -338,13 +358,14 @@ exports.getSalesTrends = async (req, res) => {
 // Get top products for radar chart
 exports.getTopProducts = async (req, res) => {
   try {
-    const shopId = req.user.shopId;
+    const shopId = req.user?.shopId;
+    const orderWhere = await getShopOrderWhere(shopId);
     const topProducts = await prisma.orderItem.groupBy({
       by: ['productId'],
       where: {
         order: {
           status: { in: ['PAID', 'COMPLETED'] },
-          user: shopId ? { shopId } : undefined
+          ...orderWhere
         }
       },
       _sum: {
@@ -388,16 +409,17 @@ exports.getTopProducts = async (req, res) => {
 // Get heatmap data (orders by day and time slot)
 exports.getHeatmapData = async (req, res) => {
   try {
-    const shopId = req.user.shopId;
+    const shopId = req.user?.shopId;
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
+    const orderWhere = await getShopOrderWhere(shopId);
     const orders = await prisma.order.findMany({
       where: {
         createdAt: { gte: sevenDaysAgo },
         status: { in: ['PAID', 'COMPLETED'] },
-        user: shopId ? { shopId } : undefined
+        ...orderWhere
       },
       select: {
         createdAt: true

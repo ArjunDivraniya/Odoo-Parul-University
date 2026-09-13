@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { Settings as SettingsIcon, Users, Monitor, CreditCard, List, Save, Plus, Trash2, Edit2, X, Check, MapPin, Coffee } from "lucide-react";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { usePopup } from "@/context/PopupContext";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { showToast, showAlert, showConfirm } = usePopup();
+  const { fetchSettings, updateSettingsState } = useSettings();
 
   // Data States
   const [settings, setSettings] = useState({
@@ -100,6 +102,8 @@ export default function SettingsPage() {
       });
 
       if (response.ok) {
+        updateSettingsState(settings);
+        fetchSettings();
         showToast("Settings saved successfully!", "success");
       } else {
         const err = await response.json();

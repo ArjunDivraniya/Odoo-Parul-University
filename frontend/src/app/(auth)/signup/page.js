@@ -13,8 +13,11 @@ import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
 
+import { useSettings } from "@/context/SettingsContext";
+
 export default function SignupPage() {
   const { signup, isLoading, error } = useAuthStore();
+  const { cafeName } = useSettings();
   const router = useRouter();
   const { register, handleSubmit } = useForm();
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +51,7 @@ export default function SignupPage() {
               Create Account
             </h2>
             <p className="mt-2 text-sm text-[#3E2B21]/40 font-medium">
-              Join Odoo Cafe today.
+              Join {cafeName} today.
             </p>
 
             {error && (

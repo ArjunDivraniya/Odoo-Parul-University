@@ -93,3 +93,30 @@ body {
 .animate-wave {
   animation: wave 3s linear infinite;
 }
+
+/* ✅ Printable Thermal Receipt Styles */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #printable-receipt, #printable-receipt * {
+    visibility: visible !important;
+  }
+  #printable-receipt {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    display: block !important;
+    z-index: 99999 !important;
+  }
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}

@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Edit2, Package, Tag, Utensils, AlertCircle } from "lucide-react";
+import TableSelectModal from "@/components/pos/TableSelectModal";
+import { MapPin, ArrowLeft, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Edit2, Package, Tag, Utensils, AlertCircle } from "lucide-react";
 import { useCartStore } from "@/stores/cart-store";
 import CustomerModal from "@/components/pos/CustomerModal";
 import { usePopup } from "@/context/PopupContext";
@@ -23,24 +24,38 @@ export default function CartPage() {
   } = useCartStore();
 
   const [selectedTable, setSelectedTable] = useState(null);
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const { showToast, showAlert } = usePopup();
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [couponSuccess, setCouponSuccess] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
-  const [sendingToKitchen, setSendingToKitchen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
 
-  useEffect(() => {
+  const syncTable = () => {
     const tableData = localStorage.getItem('selectedTable');
     if (tableData) {
       setSelectedTable(JSON.parse(tableData));
+    } else {
+      setSelectedTable(null);
     }
+  };
+
+  useEffect(() => {
+    syncTable();
+    window.addEventListener('storage', syncTable);
+    window.addEventListener('table-changed', syncTable);
+
     if (coupon) {
       setCouponInput(coupon.code);
       setCouponSuccess(`Applied: ${coupon.code}`);
     }
+
+    return () => {
+      window.removeEventListener('storage', syncTable);
+      window.removeEventListener('table-changed', syncTable);
+    };
   }, [coupon]);
 
   const getCartSubtotal = () => {
@@ -105,59 +120,9 @@ export default function CartPage() {
     setCouponSuccess("");
   };
 
-  // Send Order to Kitchen
-  const handleSendToKitchen = async () => {
-    if (sendingToKitchen || checkingOut) return;
-    setSendingToKitchen(true);
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
-      const token = localStorage.getItem('token');
-      const session = JSON.parse(localStorage.getItem('activeSession') || '{}');
-
-      const payload = {
-        id: orderId || undefined,
-        tableId: selectedTable?.id || null,
-        sessionId: session?.id || null,
-        type: selectedTable ? "DINE_IN" : "TAKEAWAY",
-        items: cart.map(item => ({
-          productId: item.id,
-          quantity: item.quantity,
-          variantId: item.variantId || null,
-          notes: item.notes || null
-        })),
-        customer: customer || undefined,
-        couponCode: coupon?.code || null,
-        status: 'SENT'
-      };
-
-      const res = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        clearCart();
-        showToast("Order sent to kitchen successfully!", "success");
-        window.location.href = '/pos/tables';
-      } else {
-        const err = await res.json();
-        showAlert(err.error || "Failed to send order to kitchen", "Kitchen Error", "error");
-      }
-    } catch (e) {
-      console.error(e);
-      showAlert("Error sending order to kitchen", "Kitchen Error", "error");
-    } finally {
-      setSendingToKitchen(false);
-    }
-  };
-
   // Proceed to Checkout
   const handleCheckout = async () => {
-    if (sendingToKitchen || checkingOut) return;
+    if (checkingOut) return;
     setCheckingOut(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
@@ -447,38 +412,53 @@ export default function CartPage() {
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-4">
-                {selectedTable && (
-                  <button
-                    onClick={handleSendToKitchen}
-                    disabled={sendingToKitchen || checkingOut}
-                    className="w-full bg-white text-[#1A4D2E] border-2 border-[#1A4D2E] py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#E8F5E9] transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Utensils className="h-5 w-5" />
-                    {sendingToKitchen ? "Sending..." : "Send to Kitchen"}
-                  </button>
-                )}
-
                 <button
                   onClick={handleCheckout}
-                  disabled={sendingToKitchen || checkingOut}
-                  className="w-full bg-[#1A4D2E] text-white py-3.5 rounded-[2rem] font-bold text-md hover:bg-[#143d24] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={checkingOut}
+                  className="w-full bg-[#1A4D2E] text-white py-4 rounded-[2rem] font-bold text-base hover:bg-[#143d24] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CreditCard className="h-5 w-5" />
-                  {checkingOut ? "Processing..." : "Proceed to Payment"}
+                  {checkingOut ? "Processing Checkout..." : "Proceed to Payment"}
                 </button>
               </div>
             </div>
 
-            {/* Table Info */}
-            {selectedTable && (
-              <div className="bg-[#E8F5E9] rounded-[2rem] p-4 border border-[#4ADE80]/30 text-center">
-                <p className="text-xs text-[#5F6F65] uppercase tracking-wider font-bold">Selected Table</p>
-                <p className="font-black text-[#1A4D2E] text-xl mt-1">{selectedTable.name}</p>
-              </div>
-            )}
+            {/* Table / Service Info */}
+            <button
+              onClick={() => setIsTableModalOpen(true)}
+              className="w-full bg-[#E8F5E9] rounded-[2rem] p-4 border border-[#4ADE80]/30 text-center hover:bg-[#d8edd9] transition-all cursor-pointer shadow-sm group"
+            >
+              <p className="text-xs text-[#5F6F65] uppercase tracking-wider font-bold">Service / Table</p>
+              <p className="font-black text-[#1A4D2E] text-xl mt-1 flex items-center justify-center gap-1.5">
+                {selectedTable ? (
+                  <>
+                    <MapPin className="h-5 w-5" />
+                    <span>{selectedTable.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <Package className="h-5 w-5 text-orange-600" />
+                    <span className="text-orange-700">Takeaway</span>
+                  </>
+                )}
+              </p>
+              <p className="text-[11px] text-[#1A4D2E]/70 underline mt-1 group-hover:text-[#1A4D2E] font-semibold">
+                Click to change table or service type
+              </p>
+            </button>
           </div>
         </div>
       </div>
+
+      <TableSelectModal
+        isOpen={isTableModalOpen}
+        onClose={() => setIsTableModalOpen(false)}
+        onSelectTable={(table) => {
+          setSelectedTable(table);
+          window.dispatchEvent(new Event('table-changed'));
+        }}
+        currentTable={selectedTable}
+      />
     </div>
   );
 }

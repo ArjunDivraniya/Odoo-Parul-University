@@ -6,6 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
+import { useSettings } from "@/context/SettingsContext";
+
 const features = [
   {
     icon: Table,
@@ -40,6 +42,8 @@ const features = [
 ];
 
 export default function Home() {
+  const { cafeName } = useSettings();
+
   return (
     <div className="min-h-screen bg-[#FCF9F2]">
       {/* Hero Section */}
@@ -61,7 +65,7 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl lg:text-7xl font-black mb-6 text-white tracking-tight font-serif">
-              Odoo Cafe
+              {cafeName}
               <span className="block text-2xl lg:text-3xl font-medium mt-3 text-white/80 font-sans">Smart POS System</span>
             </h1>
 
@@ -132,7 +136,7 @@ export default function Home() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl lg:text-5xl font-black mb-6 text-white font-serif tracking-tight">
-              Join the Odoo Cafe Family
+              Join the {cafeName} Family
             </h2>
             <p className="text-lg lg:text-xl text-white/60 mb-12 max-w-2xl mx-auto font-medium">
               Ready to elevate your coffee experience? Sign in to manage your orders efficiently.

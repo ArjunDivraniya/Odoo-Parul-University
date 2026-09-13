@@ -15,6 +15,8 @@ import {
 import { useState } from "react";
 import Image from "next/image";
 
+import { useSettings } from "@/context/SettingsContext";
+
 /* ✅ Sidebar Items FIXED */
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -28,6 +30,7 @@ const sidebarItems = [
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { cafeName } = useSettings();
 
   return (
     <div className="flex h-screen bg-beige-50 font-sans">
@@ -41,12 +44,19 @@ export default function DashboardLayout({ children }) {
         <div className="px-5 py-8 flex items-center justify-between relative z-10">
           {isSidebarOpen && (
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-md shrink-0">
-                <Coffee className="h-6 w-6 text-coffee-dark" />
+              <div className="h-11 w-11 rounded-2xl bg-white flex items-center justify-center shadow-md shrink-0 p-1.5 border border-white/40 overflow-hidden">
+                <Image
+                  src="/the_coffee_concept_logo.png"
+                  alt={`${cafeName} Logo`}
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div className="flex flex-col">
-                <p className="text-[15px] font-bold tracking-wider uppercase text-white leading-tight">
-                  Odoo Cafe
+                <p className="text-[15px] font-bold tracking-wider uppercase text-white leading-tight truncate max-w-[130px]" title={cafeName}>
+                  {cafeName}
                 </p>
                 <p className="text-[10px] text-white/70 font-medium tracking-widest">
                   Smart Point

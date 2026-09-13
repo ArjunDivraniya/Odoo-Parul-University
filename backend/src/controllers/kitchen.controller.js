@@ -93,6 +93,10 @@ exports.updateKitchenStatus = async (req, res) => {
     };
 
     if (status === 'PREPARING') {
+      await prisma.order.update({
+        where: { id },
+        data: { status: 'PREPARING' }
+      });
       if (io) {
         io.to('kitchen-room').to('cashier-room').to('admin-room').emit('kitchen_preparing', orderForFrontend);
         io.to('cashier-room').emit('kitchen_status_changed', { orderId: id, status: 'PREPARING' });
@@ -106,6 +110,10 @@ exports.updateKitchenStatus = async (req, res) => {
         });
       }
     } else if (status === 'COMPLETED') {
+      await prisma.order.update({
+        where: { id },
+        data: { status: 'COMPLETED' }
+      });
       if (io) {
         io.to('kitchen-room').to('cashier-room').to('admin-room').emit('kitchen_completed', orderForFrontend);
         io.to('cashier-room').emit('kitchen_status_changed', { orderId: id, status: 'COMPLETED' });
@@ -119,6 +127,10 @@ exports.updateKitchenStatus = async (req, res) => {
         });
       }
     } else if (status === 'SERVED') {
+      await prisma.order.update({
+        where: { id },
+        data: { status: 'COMPLETED' }
+      });
       // Release table (DINE_IN)
       if (updatedTicket.order.tableId) {
         await prisma.table.update({

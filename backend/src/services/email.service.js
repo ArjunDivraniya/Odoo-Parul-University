@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const prisma = require('../lib/prisma');
 
 exports.sendBill = async (order) => {
   if (!order.customerEmail) return;
@@ -6,6 +7,10 @@ exports.sendBill = async (order) => {
   try {
     const emailUser = process.env.EMAIL_USER;
     const emailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : '';
+
+    const settings = await prisma.settings.findFirst();
+    const cafeName = settings?.cafeName || 'Odoo Cafe';
+    const footerMsg = settings?.receiptFooter || 'Thank you for dining with us!';
 
     if (!emailUser || !emailPass) {
       console.log(`[Email Service Mock] Credentials missing. Would send to: ${order.customerEmail}`);
@@ -38,12 +43,12 @@ exports.sendBill = async (order) => {
     const mailOptions = {
       from: emailUser,
       to: order.customerEmail,
-      subject: `Receipt for Order ${order.orderNumber} - Odoo Cafe`,
+      subject: `Receipt for Order ${order.orderNumber} - ${cafeName}`,
       html: `
         <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; background-color: #fcfcf9; padding: 24px; border: 1px solid #e2e8f0; border-radius: 24px;">
           <!-- Header -->
           <div style="background-color: #1A4D2E; color: #feffe8; padding: 32px 24px; text-align: center; border-radius: 18px 18px 0 0; margin-bottom: 24px;">
-            <h1 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -0.025em; text-transform: uppercase;">Odoo Cafe</h1>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -0.025em; text-transform: uppercase;">${cafeName}</h1>
             <p style="margin: 6px 0 0 0; font-size: 14px; opacity: 0.9; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;">Transaction Receipt</p>
           </div>
 
@@ -126,7 +131,7 @@ exports.sendBill = async (order) => {
 
           <!-- Footer Message -->
           <p style="text-align: center; color: #94a3b8; font-size: 12px; font-weight: 500; margin-top: 32px; text-transform: uppercase; letter-spacing: 0.1em;">
-            Thank you for dining with Odoo Cafe!
+            ${footerMsg || `Thank you for dining with ${cafeName}!`}
           </p>
         </div>
       `

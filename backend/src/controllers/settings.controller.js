@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { getIo } = require('../lib/socket');
 
 exports.getSettings = async (req, res) => {
   try {
@@ -26,23 +27,28 @@ exports.updateSettings = async (req, res) => {
 
     const settings = await prisma.settings.findFirst();
     
-    // Determine ID or create new if somehow missing (though getSettings handles creation usually)
-    // But safely:
     const data = {
         cafeName, receiptFooter, currency,
         cashEnabled, digitalEnabled, upiEnabled, upiId
     };
 
+    let result;
     if (settings) {
-        const updated = await prisma.settings.update({
+        result = await prisma.settings.update({
             where: { id: settings.id },
             data
         });
-        res.json(updated);
     } else {
-        const newSettings = await prisma.settings.create({ data });
-        res.json(newSettings);
+        result = await prisma.settings.create({ data });
     }
+
+    const io = getIo();
+    if (io) {
+      io.emit('settings_updated', result);
+      io.emit('dashboard_updated');
+    }
+
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

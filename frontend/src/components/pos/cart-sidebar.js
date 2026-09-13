@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/stores/cart-store";
+import TableSelectModal from "@/components/pos/TableSelectModal";
 import ComboPanel from "@/components/pos/ComboPanel";
-import { Trash2, Minus, Plus, CreditCard, ChefHat, User, MapPin, Package, List, Gift } from "lucide-react";
+import { Trash2, Minus, Plus, CreditCard, ChefHat, Utensils, Tag, AlertCircle, User, MapPin, Package, List, Gift } from "lucide-react";
 import { usePopup } from "@/context/PopupContext";
 
 export default function CartSidebar({ onAddCustomer }) {
@@ -16,6 +17,7 @@ export default function CartSidebar({ onAddCustomer }) {
     customer, 
     orderId, 
     coupon,
+    setCoupon,
     // Promotion states
     autoApply,
     appliedManualPromotions,
@@ -24,14 +26,83 @@ export default function CartSidebar({ onAddCustomer }) {
   
   const { showToast, showAlert } = usePopup();
   const [selectedTable, setSelectedTable] = useState(null);
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
 
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponSuccess, setCouponSuccess] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
   useEffect(() => {
+    if (coupon) {
+      setCouponInput(coupon.code);
+      setCouponSuccess(`Applied: ${coupon.code}`);
+    } else {
+      setCouponInput("");
+      setCouponSuccess("");
+    }
+  }, [coupon]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput) return;
+    setValidatingCoupon(true);
+    setCouponError("");
+    setCouponSuccess("");
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${API_URL}/coupons/validate/${couponInput.trim()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCoupon(data);
+        setCouponSuccess(`Coupon code applied successfully!`);
+        if (showToast) showToast("Coupon code applied!", "success");
+      } else {
+        const err = await response.json();
+        setCouponError(err.error || "Invalid coupon code");
+        setCoupon(null);
+      }
+    } catch (error) {
+      console.error('Coupon validation failed:', error);
+      setCouponError("Failed to validate coupon");
+      setCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+    setCouponSuccess("");
+  };
+
+  const syncTable = () => {
     const tableData = localStorage.getItem('selectedTable');
     if (tableData) {
       setSelectedTable(JSON.parse(tableData));
+    } else {
+      setSelectedTable(null);
     }
+  };
+
+  useEffect(() => {
+    syncTable();
+    window.addEventListener('storage', syncTable);
+    window.addEventListener('table-changed', syncTable);
+    return () => {
+      window.removeEventListener('storage', syncTable);
+      window.removeEventListener('table-changed', syncTable);
+    };
   }, [cart]);
 
   // Use values evaluated by our backend engine
@@ -42,7 +113,7 @@ export default function CartSidebar({ onAddCustomer }) {
   const evaluatedItems = evaluatedData?.items || [];
 
   const handleCheckout = async () => {
-    if (checkingOut || sending) return;
+    if (checkingOut) return;
     if (cart.length === 0) return;
     if (!customer || !customer.name || !(customer.phone || customer.mobile)) {
       showAlert(
@@ -107,77 +178,6 @@ export default function CartSidebar({ onAddCustomer }) {
     }
   };
 
-  const handleSendToKitchen = async () => {
-    if (checkingOut || sending) return;
-    if (cart.length === 0) return;
-    if (!customer || !customer.name || !(customer.phone || customer.mobile)) {
-      showAlert(
-        "Please add customer details (Name and Phone Number) in the sidebar or products page before sending to kitchen.",
-        "Kitchen Required Information",
-        "warning"
-      );
-      return;
-    }
-    setSending(true);
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
-      const token = localStorage.getItem('token');
-      const session = JSON.parse(localStorage.getItem('activeSession') || '{}');
-
-      if (!session || !session.id) {
-        throw new Error("No active session found. Please start a session first.");
-      }
-
-      const orderPayload = {
-        sessionId: session.id,
-        tableId: selectedTable?.id || undefined,
-        status: 'SENT',
-        type: selectedTable ? "DINE_IN" : "TAKEAWAY",
-        items: cart.map(item => ({
-          productId: item.id,
-          quantity: item.quantity,
-          variantId: item.variantId || null,
-          notes: item.notes || null
-        })),
-        customerId: customer?.id || null,
-        customer: customer ? {
-          name: customer.name,
-          email: customer.email || null,
-          mobile: customer.phone || customer.mobile || null
-        } : undefined,
-        couponCode: coupon?.code || null,
-        autoApply,
-        appliedManualPromotions
-      };
-
-      const orderResponse = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(orderPayload)
-      });
-
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.text();
-        throw new Error(`Failed to create order: ${errorData || orderResponse.statusText}`);
-      }
-
-      clearCart();
-      localStorage.removeItem('pendingOrder');
-      localStorage.removeItem('pendingCustomer');
-      
-      showToast("Order sent to kitchen successfully!", "success");
-      window.location.href = '/pos/tables';
-    } catch (error) {
-      console.error('Send to kitchen error:', error);
-      showAlert(error.message, "Send to Kitchen Error", "error");
-    } finally {
-      setSending(false);
-    }
-  };
-
   return (
     <aside className="w-[400px] bg-white border-l border-[#E8F5E9] flex flex-col h-full shadow-2xl relative z-10">
       {/* Header */}
@@ -197,15 +197,25 @@ export default function CartSidebar({ onAddCustomer }) {
         {/* Customer & Table Badges */}
         <div className="flex gap-2">
           {selectedTable ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E8F5E9] text-[#1A4D2E] text-xs font-bold border border-[#4ADE80]/20">
+            <button
+              onClick={() => setIsTableModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E8F5E9] text-[#1A4D2E] text-xs font-bold border border-[#4ADE80]/30 hover:bg-[#d8edd9] transition-all cursor-pointer shadow-sm group"
+              title="Click to change table or switch to Takeaway"
+            >
               <MapPin className="h-3.5 w-3.5" />
               <span>{selectedTable.name}</span>
-            </div>
+              <span className="text-[10px] text-[#1A4D2E]/70 underline group-hover:text-[#1A4D2E]">(Change)</span>
+            </button>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 text-orange-700 text-xs font-bold border border-orange-100">
+            <button
+              onClick={() => setIsTableModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 text-orange-700 text-xs font-bold border border-orange-200 hover:bg-orange-100 transition-all cursor-pointer shadow-sm group"
+              title="Click to select a table"
+            >
               <Package className="h-3.5 w-3.5" />
               <span>Takeaway</span>
-            </div>
+              <span className="text-[10px] text-orange-800/80 underline group-hover:text-orange-950">(Select Table)</span>
+            </button>
           )}
 
           <button
@@ -324,6 +334,52 @@ export default function CartSidebar({ onAddCustomer }) {
       </div>
 
 <ComboPanel />
+      {/* Promo / Coupon Box */}
+      <div className="px-6 py-2 bg-[#FBFBF2]">
+        <div className="bg-white rounded-2xl p-3 border border-[#E8F5E9] shadow-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#1A4D2E] flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5 text-[#1A4D2E]" />
+              Promo / Coupon Code
+            </span>
+          </div>
+
+          {!coupon ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Enter code (e.g. SAVE10)"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                className="flex-1 px-3 py-1.5 border border-gray-200 rounded-xl focus:border-[#1A4D2E] focus:outline-none uppercase font-bold text-xs bg-[#FBFBF2]"
+              />
+              <button
+                onClick={handleApplyCoupon}
+                disabled={validatingCoupon || !couponInput}
+                className="px-3 py-1.5 bg-[#1A4D2E] text-white rounded-xl font-bold hover:bg-[#143D24] text-xs disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {validatingCoupon ? '...' : 'Apply'}
+              </button>
+            </div>
+          ) : (
+            <div className="p-2 bg-[#E8F5E9] rounded-xl border border-[#4ADE80]/30 flex justify-between items-center text-xs">
+              <div>
+                <span className="font-black text-[#1A4D2E]">{coupon.code}</span>
+                <span className="text-[10px] text-[#5F6F65] ml-1.5">
+                  ({coupon.type === 'PERCENTAGE' ? `${coupon.discount}%` : `₹${coupon.discount}`} off)
+                </span>
+              </div>
+              <button onClick={handleRemoveCoupon} className="p-1 hover:bg-white rounded text-red-500 transition-colors">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {couponError && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {couponError}</p>}
+          {couponSuccess && <p className="text-[10px] text-emerald-600 font-bold">✓ {couponSuccess}</p>}
+        </div>
+      </div>
+
       {/* Summary Section */}
       <div className="p-6 bg-[#FBFBF2] border-t border-[#E8F5E9] rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.03)] space-y-4">
         <div className="space-y-2.5">
@@ -368,13 +424,23 @@ export default function CartSidebar({ onAddCustomer }) {
           <button 
             onClick={handleCheckout}
             disabled={checkingOut || cart.length === 0}
-            className="w-full h-14 bg-[#1A4D2E] text-white py-3 rounded-[2rem] font-bold text-lg hover:bg-[#143d24] disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+            className="w-full py-4 bg-[#1A4D2E] text-white rounded-[2rem] font-bold text-base hover:bg-[#143d24] disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
           >
             <CreditCard className="h-5 w-5" />
-            {checkingOut ? "Processing..." : "Pay Now"}
+            {checkingOut ? "Processing Checkout..." : "Proceed to Payment"}
           </button>
         </div>
       </div>
+
+      <TableSelectModal
+        isOpen={isTableModalOpen}
+        onClose={() => setIsTableModalOpen(false)}
+        onSelectTable={(table) => {
+          setSelectedTable(table);
+          window.dispatchEvent(new Event('table-changed'));
+        }}
+        currentTable={selectedTable}
+      />
     </aside>
   );
 }

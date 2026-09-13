@@ -3,11 +3,12 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { ChefHat, Clock, CheckCircle, LogOut, Flame, Package, Bell, RefreshCw, AlertCircle, Utensils, X } from "lucide-react";
+import { ChefHat, Clock, CheckCircle, LogOut, Flame, Package, Bell, RefreshCw, AlertCircle, Utensils, X, Coffee } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 import { getSocket } from "@/lib/socket";
 import { usePopup } from "@/context/PopupContext";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function KitchenPage() {
   const [orders, setOrders] = useState([]);
@@ -15,6 +16,7 @@ export default function KitchenPage() {
   const [lastError, setLastError] = useState(null);
   const { logout } = useAuthStore();
   const { showToast, showAlert } = usePopup();
+  const { cafeName } = useSettings();
 
   const fetchOrders = async () => {
     setLastError(null);
@@ -133,7 +135,7 @@ export default function KitchenPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FBFBF2]">
+      <div className="flex items-center justify-center min-h-screen bg-[#FDFCF7]">
         <CoffeeLoader size="xl" text="Connecting to Kitchen..." />
       </div>
     );
@@ -149,7 +151,7 @@ export default function KitchenPage() {
   const getTimeColor = (minutes) => {
     if (minutes > 20) return 'text-red-700 bg-red-50 border-red-200';
     if (minutes > 10) return 'text-amber-700 bg-amber-50 border-amber-200';
-    return 'text-[#1A4D2E] bg-emerald-50 border-emerald-200';
+    return 'text-[#1A4D2E] bg-[#E8F5E9] border-[#4ADE80]/30';
   };
 
   // Filter columns based on order status
@@ -157,19 +159,19 @@ export default function KitchenPage() {
   const preparingOrders = orders.filter(o => o.status === 'PREPARING');
   const completedOrders = orders.filter(o => o.status === 'COMPLETED');
 
-  const KitchenColumn = ({ title, activeOrders, icon: Icon, colorClass, nextStatus, emptyText }) => (
-    <div className="flex-1 flex flex-col min-w-0 bg-white/40 backdrop-blur-xl rounded-[2.5rem] border border-white/60 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden h-full">
+  const KitchenColumn = ({ title, activeOrders, icon: Icon, colorClass, nextStatus, emptyText, btnText, btnBg }) => (
+    <div className="flex-1 flex flex-col min-w-0 bg-[#FDFCF7] rounded-[32px] border border-[#F0EBE1] shadow-[0_2px_15px_rgba(0,0,0,0.02)] overflow-hidden h-full">
       {/* Column Header */}
-      <div className={`p-6 border-b border-white/50 ${colorClass}`}>
+      <div className={`p-6 border-b border-[#F0EBE1] ${colorClass}`}>
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center">
+          <div className="h-12 w-12 rounded-full bg-white shadow-xs flex items-center justify-center border border-[#F0EBE1]">
             <Icon className="h-6 w-6 text-[#1A4D2E]" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-[#1A4D2E] tracking-tight">{title}</h2>
+            <h2 className="text-xl font-black text-[#3E2B21] font-serif tracking-tight">{title}</h2>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`h-2 w-2 rounded-full ${activeOrders.length > 0 ? 'bg-[#1A4D2E] animate-pulse' : 'bg-gray-300'}`}></span>
-              <p className="text-sm font-semibold text-gray-500">{activeOrders.length} ACTIVE</p>
+              <span className={`h-2.5 w-2.5 rounded-full ${activeOrders.length > 0 ? 'bg-[#1A4D2E] animate-pulse' : 'bg-gray-300'}`}></span>
+              <p className="text-xs font-bold text-[#8C8775] uppercase tracking-wider">{activeOrders.length} ACTIVE</p>
             </div>
           </div>
         </div>
@@ -179,10 +181,10 @@ export default function KitchenPage() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {activeOrders.length === 0 ? (
           <div className="text-center py-24 flex flex-col items-center justify-center h-full opacity-60">
-            <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-              <Icon className="h-8 w-8 text-gray-300" />
+            <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center mb-4 border border-[#F0EBE1] shadow-xs">
+              <Icon className="h-8 w-8 text-[#A8A396]" />
             </div>
-            <p className="text-gray-500 font-bold">{emptyText}</p>
+            <p className="text-[#8C8775] font-bold text-sm">{emptyText}</p>
           </div>
         ) : (
           activeOrders.map((order) => {
@@ -191,32 +193,28 @@ export default function KitchenPage() {
             return (
               <div
                 key={order.id}
-                onClick={() => nextStatus && updateOrderStatus(order.id, nextStatus)}
-                className="bg-white rounded-[2rem] p-5 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer border border-transparent hover:border-[#1A4D2E]/20 hover:-translate-y-1 group relative overflow-hidden"
+                className="bg-white rounded-[28px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 border border-[#F0EBE1] hover:border-[#1A4D2E]/30 relative overflow-hidden group"
               >
-                {/* Status Bar */}
-                <div className={`absolute top-0 left-0 w-1.5 h-full ${nextStatus === 'PREPARING' ? 'bg-orange-400' : 'bg-blue-400'} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
-
                 {/* Order Header */}
-                <div className="flex items-center justify-between mb-4 pb-4 border-b border-dashed border-gray-100">
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-dashed border-[#F0EBE1]">
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-xl font-black text-[#1A4D2E]">
-                      #{order.orderNumber?.slice(-3) || order.id.slice(0, 3)}
+                      {order.orderNumber || `#${order.id.slice(0, 6)}`}
                     </span>
                     {order.table ? (
-                      <span className="px-3 py-1 rounded-full bg-[#1A4D2E]/5 text-[#1A4D2E] text-xs font-bold uppercase tracking-wider border border-[#1A4D2E]/10">
+                      <span className="px-3.5 py-1 rounded-full bg-[#1A4D2E]/10 text-[#1A4D2E] text-xs font-black uppercase tracking-wider border border-[#1A4D2E]/20">
                         {order.table.name}
                       </span>
                     ) : (
-                      <span className="px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-bold uppercase tracking-wider border border-orange-100">
+                      <span className="px-3.5 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-black uppercase tracking-wider border border-amber-200">
                         Takeaway
                       </span>
                     )}
                   </div>
 
-                  <div className={`px-3 py-1 rounded-full flex items-center gap-1.5 border leading-none ${getTimeColor(elapsedTime)}`}>
+                  <div className={`px-3.5 py-1 rounded-full flex items-center gap-1.5 border leading-none font-bold text-xs ${getTimeColor(elapsedTime)}`}>
                     <Clock className="h-3.5 w-3.5" />
-                    <span className="font-bold text-xs">{elapsedTime}m</span>
+                    <span>{elapsedTime}m</span>
                   </div>
                 </div>
 
@@ -225,20 +223,20 @@ export default function KitchenPage() {
                   {order.items?.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-start gap-4 p-2 rounded-xl group-hover:bg-[#FBFBF2] transition-colors"
+                      className="flex items-start gap-3 p-3 rounded-[18px] bg-[#FDFCF7] border border-[#F0EBE1]"
                     >
-                      <div className="h-8 w-8 bg-[#1A4D2E] text-white rounded-lg flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
-                        {item.quantity}
+                      <div className="h-8 w-8 bg-[#1A4D2E] text-white rounded-full flex items-center justify-center font-black text-xs shadow-xs flex-shrink-0">
+                        {item.quantity}×
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-800 leading-snug">{item.productName}</p>
+                        <p className="font-bold text-[#3E2B21] leading-snug text-sm">{item.productName}</p>
                         {item.variantName && (
-                          <p className="text-xs text-gray-500 font-medium">+ {item.variantName}</p>
+                          <p className="text-xs text-[#8C8775] font-semibold mt-0.5">+ {item.variantName}</p>
                         )}
                         {item.notes && (
-                          <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide rounded border border-amber-100">
-                            <AlertCircle className="h-3 w-3" />
-                            {item.notes}
+                          <div className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 text-[11px] font-bold rounded-full border border-amber-200">
+                            <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                            <span>{item.notes}</span>
                           </div>
                         )}
                       </div>
@@ -246,18 +244,15 @@ export default function KitchenPage() {
                   ))}
                 </div>
 
-                {/* Action Hint */}
+                {/* Interactive Theme Action Button */}
                 {nextStatus && (
-                  <div className="mt-4 pt-3 flex items-center justify-center border-t border-gray-50 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
-                    <span className="text-xs font-bold text-[#1A4D2E] uppercase tracking-widest flex items-center gap-2">
-                      {nextStatus === 'PREPARING' ? (
-                        <>Start Cooking <Flame className="h-4 w-4" /></>
-                      ) : nextStatus === 'COMPLETED' ? (
-                        <>Mark Ready <CheckCircle className="h-4 w-4" /></>
-                      ) : (
-                        <>Mark Served <Utensils className="h-4 w-4" /></>
-                      )}
-                    </span>
+                  <div className="mt-5 pt-3 border-t border-[#F0EBE1]">
+                    <button
+                      onClick={() => updateOrderStatus(order.id, nextStatus)}
+                      className={`w-full py-3.5 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all transform active:scale-95 text-white ${btnBg}`}
+                    >
+                      {btnText}
+                    </button>
                   </div>
                 )}
               </div>
@@ -269,100 +264,106 @@ export default function KitchenPage() {
   );
 
   return (
-    <div className="h-screen flex flex-col bg-[#FBFBF2] overflow-hidden font-sans">
+    <div className="h-screen flex flex-col bg-[#FDFCF7] overflow-hidden font-sans">
       {lastError && (
-        <div className="bg-red-500 text-white px-6 py-3 text-center font-bold flex items-center justify-center gap-2 shadow-lg z-50">
+        <div className="bg-red-600 text-white px-6 py-3 text-center font-bold flex items-center justify-center gap-2 shadow-lg z-50">
           <AlertCircle className="h-5 w-5" />
           {lastError}
         </div>
       )}
 
-      {/* Notifications are now managed by global PopupProvider */}
-
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-b border-gray-100 z-20 px-8 py-5">
+      <header className="bg-white border-b border-[#F0EBE1] shadow-[0_2px_15px_rgba(0,0,0,0.02)] z-20 px-8 py-5">
         <div className="flex items-center justify-between max-w-[1920px] mx-auto w-full">
-          <div className="flex items-center gap-6">
-            <div className="h-16 w-16 relative bg-white rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-[#1A4D2E]/10 transform hover:rotate-6 transition-transform duration-300 cursor-pointer overflow-hidden border border-gray-100">
+          <div className="flex items-center gap-5">
+            <div className="h-14 w-14 relative bg-white rounded-full flex items-center justify-center shadow-md border border-[#F0EBE1] overflow-hidden p-1">
                <Image 
-                  src="/odoo_cafe_logo.png" 
-                  alt="Odoo Cafe Logo" 
+                  src="/the_coffee_concept_logo.png" 
+                  alt={`${cafeName} Logo`} 
                   fill
-                  className="object-contain p-2"
+                  className="object-contain p-1.5"
                   priority
                />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-[#1A4D2E] tracking-tight">
-                Kitchen Display
+              <h1 className="text-2xl font-black text-[#3E2B21] font-serif tracking-tight">
+                {cafeName} Kitchen KDS
               </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-                <p className="text-gray-500 font-medium text-sm">Live Feed • {toCookOrders.length + preparingOrders.length} Active</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <p className="text-[#8C8775] font-bold text-xs">Live Kitchen Feed • {toCookOrders.length + preparingOrders.length} Active Tickets</p>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Stats Pills */}
-            <div className="hidden lg:flex items-center gap-4 mr-8">
-              <div className="px-5 py-2.5 bg-orange-50 rounded-2xl border border-orange-100 flex flex-col items-center min-w-[100px]">
-                <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Pending</span>
-                <span className="text-2xl font-black text-orange-600 leading-none mt-1">{toCookOrders.length}</span>
+            {/* Stats Pills matching POS style */}
+            <div className="hidden lg:flex items-center gap-3 mr-6">
+              <div className="px-5 py-2 rounded-full bg-[#FFF4E5] border border-[#FFE0A3] flex items-center gap-3">
+                <span className="text-xs font-bold text-[#B8700A] uppercase tracking-wider">To Cook</span>
+                <span className="text-lg font-black text-[#E68A00] leading-none">{toCookOrders.length}</span>
               </div>
-              <div className="px-5 py-2.5 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center min-w-[100px]">
-                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Cooking</span>
-                <span className="text-2xl font-black text-blue-600 leading-none mt-1">{preparingOrders.length}</span>
+              <div className="px-5 py-2 rounded-full bg-[#E8F4FD] border border-[#B8DCF0] flex items-center gap-3">
+                <span className="text-xs font-bold text-[#1E6FA0] uppercase tracking-wider">Cooking</span>
+                <span className="text-lg font-black text-[#1E6FA0] leading-none">{preparingOrders.length}</span>
+              </div>
+              <div className="px-5 py-2 rounded-full bg-[#E8F5E9] border border-[#A5D6A7] flex items-center gap-3">
+                <span className="text-xs font-bold text-[#2E7D32] uppercase tracking-wider">Ready</span>
+                <span className="text-lg font-black text-[#2E7D32] leading-none">{completedOrders.length}</span>
               </div>
             </div>
 
-            <div className="h-10 w-px bg-gray-200 mx-2"></div>
-
             <button
               onClick={() => fetchOrders()}
-              className="h-12 w-12 bg-white border-2 border-gray-100 text-gray-500 rounded-2xl hover:border-[#1A4D2E] hover:text-[#1A4D2E] transition-all flex items-center justify-center group"
-              title="Refresh"
+              className="h-12 w-12 bg-[#FDFCF7] border border-[#F0EBE1] text-[#3E2B21] rounded-full hover:border-[#1A4D2E] hover:text-[#1A4D2E] transition-all flex items-center justify-center group shadow-xs"
+              title="Refresh Queue"
             >
               <RefreshCw className="h-5 w-5 group-hover:rotate-180 transition-transform duration-500" />
             </button>
 
             <button
-              onClick={() => window.location.href = '/'}
-              className="px-6 py-3 bg-[#1A4D2E] text-white rounded-2xl font-bold hover:bg-[#143D24] shadow-lg shadow-[#1A4D2E]/20 hover:shadow-xl transition-all flex items-center gap-2 transform active:scale-95"
+              onClick={() => window.location.href = '/pos/terminal'}
+              className="px-6 py-3 bg-[#1A4D2E] text-white rounded-full font-bold hover:bg-[#143D24] shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm transform active:scale-95"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4.5 w-4.5" />
               Exit KDS
             </button>
           </div>
         </div>
       </header>
 
-      {/* Board */}
+      {/* Main KDS Board */}
       <div className="flex-1 p-8 overflow-hidden">
         <div className="flex gap-8 h-full max-w-[1920px] mx-auto w-full">
           <KitchenColumn
             title="To Cook"
             activeOrders={toCookOrders}
             icon={Package}
-            colorClass="bg-gradient-to-r from-orange-50 to-transparent"
+            colorClass="bg-[#FDFCF7]"
             nextStatus="PREPARING"
             emptyText="All caught up! No pending orders"
+            btnText="Start Cooking 🔥"
+            btnBg="bg-[#1A4D2E] hover:bg-[#143D24]"
           />
           <KitchenColumn
             title="On The Grill"
             activeOrders={preparingOrders}
             icon={Flame}
-            colorClass="bg-gradient-to-r from-blue-50 to-transparent"
+            colorClass="bg-[#FDFCF7]"
             nextStatus="COMPLETED"
             emptyText="Kitchen is clear"
+            btnText="Mark Ready ⏱️"
+            btnBg="bg-[#1E6FA0] hover:bg-[#15537A]"
           />
           <KitchenColumn
             title="Ready to Serve"
             activeOrders={completedOrders}
             icon={CheckCircle}
-            colorClass="bg-gradient-to-r from-green-50 to-transparent"
+            colorClass="bg-[#FDFCF7]"
             nextStatus="SERVED"
             emptyText="No orders waiting for pickup"
+            btnText="Mark Served 🍽️"
+            btnBg="bg-[#2E7D32] hover:bg-[#1E5621]"
           />
         </div>
       </div>

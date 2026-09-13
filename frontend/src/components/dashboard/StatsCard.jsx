@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
 
-export default function StatsCard({ title, value, icon: Icon, trend = "12.5%", trendUp = true }) {
+export default function StatsCard({ title, value, icon: Icon, trend = null, trendUp = true, subtext = null }) {
   // Default to coffee/brown theme to match the app aesthetic
   let iconBg = "bg-[#F5EFE6]";
   let iconColor = "text-[#6B4423]";
@@ -39,15 +39,23 @@ export default function StatsCard({ title, value, icon: Icon, trend = "12.5%", t
           </h3>
           
           <div className="flex items-center gap-1.5 mt-2.5">
-            {trendUp ? (
-              <TrendingUp className="h-[14px] w-[14px] text-[#22C55E]" strokeWidth={3} />
+            {trend ? (
+              <>
+                {trendUp ? (
+                  <TrendingUp className="h-[14px] w-[14px] text-[#22C55E]" strokeWidth={3} />
+                ) : (
+                  <TrendingDown className="h-[14px] w-[14px] text-red-500" strokeWidth={3} />
+                )}
+                <span className={`text-[12px] font-bold ${trendUp ? "text-[#22C55E]" : "text-red-500"}`}>
+                  {trend}
+                </span>
+                <span className="text-[12px] text-[#A8A396] font-medium">vs yesterday</span>
+              </>
             ) : (
-              <TrendingDown className="h-[14px] w-[14px] text-red-500" strokeWidth={3} />
+              <span className="text-[12px] text-[#A8A396] font-medium leading-snug">
+                {subtext || "Live system count"}
+              </span>
             )}
-            <span className={`text-[12px] font-bold ${trendUp ? "text-[#22C55E]" : "text-red-500"}`}>
-              {trend}
-            </span>
-            <span className="text-[12px] text-[#A8A396] font-medium">vs yesterday</span>
           </div>
         </div>
       </div>

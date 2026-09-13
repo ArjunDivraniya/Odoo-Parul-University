@@ -30,7 +30,10 @@ import {
 } from "lucide-react";
 import CoffeeLoader from "@/components/ui/CoffeeLoader";
 
+import { useSettings } from "@/context/SettingsContext";
+
 export default function OrdersPage() {
+  const { cafeName } = useSettings();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -310,7 +313,7 @@ export default function OrdersPage() {
         // Header
         doc.setFontSize(18);
         doc.setFont("helvetica", "bold");
-        doc.text("ODOO CAFE", pageWidth / 2, yPos, { align: "center" });
+        doc.text(cafeName.toUpperCase(), pageWidth / 2, yPos, { align: "center" });
         yPos += 10;
 
         doc.setFontSize(12);

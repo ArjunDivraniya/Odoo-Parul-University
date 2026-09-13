@@ -83,13 +83,14 @@ export default function POSSidebar() {
       <div className="px-5 py-4 flex items-center justify-between relative z-10">
         {isSidebarOpen && (
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-white border border-white/40 flex items-center justify-center shadow-lg">
+            <div className="h-12 w-12 rounded-2xl bg-white border border-white/40 flex items-center justify-center shadow-lg overflow-hidden p-1">
               <Image
-                src="/odoo_cafe_logo.png"
-                alt="Logo"
+                src="/the_coffee_concept_logo.png"
+                alt="Cafe Logo"
                 width={48}
                 height={48}
                 className="object-contain"
+                priority
               />
             </div>
             <p className="text-sm font-bold tracking-[0.2em] uppercase text-white">

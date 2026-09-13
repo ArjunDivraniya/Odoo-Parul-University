@@ -11,8 +11,11 @@ import Image from "next/image";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
 
+import { useSettings } from "@/context/SettingsContext";
+
 export default function LoginPage() {
   const { login, isLoading, error } = useAuthStore();
+  const { cafeName } = useSettings();
   const router = useRouter();
   const { register, handleSubmit } = useForm();
   const [showPassword, setShowPassword] = useState(false);
@@ -127,7 +130,7 @@ export default function LoginPage() {
             className="flex items-center gap-3 text-white/20 text-sm font-medium"
           >
             <Coffee className="h-4 w-4" />
-            <span>Odoo Cafe POS · Built for excellence</span>
+            <span>{cafeName} POS · Built for excellence</span>
           </motion.div>
         </div>
       </div>
