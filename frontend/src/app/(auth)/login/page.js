@@ -36,16 +36,14 @@ export default function LoginPage() {
     if (user) handleLoginSuccess(user);
   };
 
-  const handleQuickLogin = async (role) => {
+  const handleFillCredentials = (role) => {
     let email = "";
     let password = "123456789";
     if (role === "admin") email = "arjundivraniya8@gmail.com";
     if (role === "kitchen") email = "s2@gmail.com";
     if (role === "employee" || role === "cashier") email = "s1@gmail.com";
-    setValue("email", email);
-    setValue("password", password);
-    const user = await login(email, password);
-    if (user) handleLoginSuccess(user);
+    setValue("email", email, { shouldValidate: true, shouldDirty: true });
+    setValue("password", password, { shouldValidate: true, shouldDirty: true });
   };
 
   return (
@@ -193,8 +191,9 @@ export default function LoginPage() {
                 { role: "employee", emoji: "💼", label: "Employee", color: "from-[#F5EFE6] to-[#EDE4D4]" },
               ].map(({ role, emoji, label, color }) => (
                 <button
+                  type="button"
                   key={role}
-                  onClick={() => handleQuickLogin(role)}
+                  onClick={() => handleFillCredentials(role)}
                   className={`group relative overflow-hidden p-3.5 bg-gradient-to-b ${color} rounded-[16px] text-[13px] font-bold text-[#2A1A10]/70 transition-all duration-300 border border-[#2A1A10]/[0.04] hover:border-[#2A1A10]/10 hover:shadow-[0_8px_25px_rgba(42,26,16,0.06)] hover:-translate-y-0.5 active:translate-y-0`}
                 >
                   <span className="flex flex-col items-center gap-1.5">

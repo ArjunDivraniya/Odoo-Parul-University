@@ -16,6 +16,7 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { useSettings } from "@/context/SettingsContext";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 /* ✅ Sidebar Items FIXED */
 const sidebarItems = [
@@ -33,99 +34,101 @@ export default function DashboardLayout({ children }) {
   const { cafeName } = useSettings();
 
   return (
-    <div className="flex h-screen bg-beige-50 font-sans">
-      {/* ✅ Sidebar */}
-      <aside
-        className={`${isSidebarOpen ? "w-64" : "w-20"
-          } relative bg-coffee-dark text-white shadow-[10px_0_40px_rgba(62,43,33,0.1)] 
-        transition-all duration-500 flex flex-col h-screen overflow-hidden shrink-0`}
-      >
-        {/* Logo + Toggle */}
-        <div className="px-5 py-8 flex items-center justify-between relative z-10">
-          {isSidebarOpen && (
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-2xl bg-white flex items-center justify-center shadow-md shrink-0 p-1.5 border border-white/40 overflow-hidden">
-                <Image
-                  src="/the_coffee_concept_logo.png"
-                  alt={`${cafeName} Logo`}
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                  priority
-                />
+    <AuthGuard allowedRoles={["ADMIN"]}>
+      <div className="flex h-screen bg-beige-50 font-sans">
+        {/* ✅ Sidebar */}
+        <aside
+          className={`${isSidebarOpen ? "w-64" : "w-20"
+            } relative bg-coffee-dark text-white shadow-[10px_0_40px_rgba(62,43,33,0.1)] 
+          transition-all duration-500 flex flex-col h-screen overflow-hidden shrink-0`}
+        >
+          {/* Logo + Toggle */}
+          <div className="px-5 py-8 flex items-center justify-between relative z-10">
+            {isSidebarOpen && (
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-2xl bg-white flex items-center justify-center shadow-md shrink-0 p-1.5 border border-white/40 overflow-hidden">
+                  <Image
+                    src="/the_coffee_concept_logo.png"
+                    alt={`${cafeName} Logo`}
+                    width={40}
+                    height={40}
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-[15px] font-bold tracking-wider uppercase text-white leading-tight truncate max-w-[130px]" title={cafeName}>
+                    {cafeName}
+                  </p>
+                  <p className="text-[10px] text-white/70 font-medium tracking-widest">
+                    Smart Point
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <p className="text-[15px] font-bold tracking-wider uppercase text-white leading-tight truncate max-w-[130px]" title={cafeName}>
-                  {cafeName}
-                </p>
-                <p className="text-[10px] text-white/70 font-medium tracking-widest">
-                  Smart Point
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`p-2 rounded-2xl border border-white/30 backdrop-blur ${isSidebarOpen
-                ? "bg-white/10 hover:bg-white/20"
-                : "bg-white/20 hover:bg-white/30 mx-auto"
-              }`}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-        </div>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className={`p-2 rounded-2xl border border-white/30 backdrop-blur ${isSidebarOpen
+                  ? "bg-white/10 hover:bg-white/20"
+                  : "bg-white/20 hover:bg-white/30 mx-auto"
+                }`}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+          </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-2 relative z-10">
-          {sidebarItems.map((item) => {
-            const isActive = pathname === item.href;
+          {/* Navigation */}
+          <nav className="flex-1 px-3 space-y-2 relative z-10">
+            {sidebarItems.map((item) => {
+              const isActive = pathname === item.href;
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center p-3.5 rounded-[20px] transition-all duration-300 group ${isActive
-                  ? "bg-beige-100 text-coffee-dark shadow-sm"
-                  : "bg-transparent text-white/70 hover:bg-white/5 hover:text-white"
-                  }`}
-              >
-                <item.icon
-                  className={`h-5 w-5 ${isActive
-                    ? "text-coffee-dark"
-                    : "text-white/60 group-hover:text-white"
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center p-3.5 rounded-[20px] transition-all duration-300 group ${isActive
+                    ? "bg-beige-100 text-coffee-dark shadow-sm"
+                    : "bg-transparent text-white/70 hover:bg-white/5 hover:text-white"
                     }`}
-                />
+                >
+                  <item.icon
+                    className={`h-5 w-5 ${isActive
+                      ? "text-coffee-dark"
+                      : "text-white/60 group-hover:text-white"
+                      }`}
+                  />
 
-                {isSidebarOpen && (
-                  <span className={`ml-4 text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>{item.label}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                  {isSidebarOpen && (
+                    <span className={`ml-4 text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>{item.label}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
-        {/* Logout */}
-        <div className="p-5 mt-auto relative z-10">
-          <button
-            onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-              localStorage.removeItem('activeSession');
-              window.location.href = '/login';
-            }}
-            className="flex items-center w-full p-3.5 rounded-[20px] text-white/70 hover:bg-white/5 hover:text-white transition-colors border border-white/10"
-          >
-            <LogOut className="h-5 w-5" />
-            {isSidebarOpen && <span className="ml-4 font-medium text-[15px]">Logout</span>}
-          </button>
-        </div>
-      </aside>
+          {/* Logout */}
+          <div className="p-5 mt-auto relative z-10">
+            <button
+              onClick={() => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('activeSession');
+                window.location.href = '/login';
+              }}
+              className="flex items-center w-full p-3.5 rounded-[20px] text-white/70 hover:bg-white/5 hover:text-white transition-colors border border-white/10"
+            >
+              <LogOut className="h-5 w-5" />
+              {isSidebarOpen && <span className="ml-4 font-medium text-[15px]">Logout</span>}
+            </button>
+          </div>
+        </aside>
 
-      {/* ✅ Main Content */}
-      <main className="flex-1 overflow-y-auto bg-beige-50 p-8 h-screen">
-        <div className="max-w-[1400px] mx-auto">{children}</div>
-      </main>
-    </div>
+        {/* ✅ Main Content */}
+        <main className="flex-1 overflow-y-auto bg-beige-50 p-8 h-screen">
+          <div className="max-w-[1400px] mx-auto">{children}</div>
+        </main>
+      </div>
+    </AuthGuard>
   );
 }

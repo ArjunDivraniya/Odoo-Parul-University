@@ -15,6 +15,5 @@ router.delete('/categories/:id', authenticateToken, requireRole(['ADMIN']), prod
 router.post('/', authenticateToken, requireRole(['ADMIN']), productController.createProduct);
 router.put('/:id', authenticateToken, requireRole(['ADMIN']), productController.updateProduct);
 router.delete('/:id', authenticateToken, requireRole(['ADMIN']), productController.deleteProduct);
-router.get("/products",productController.getProducts);
 
 module.exports = router;
