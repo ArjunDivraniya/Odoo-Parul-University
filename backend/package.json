@@ -1,7 +1,7 @@
 {
   "name": "odoo-cafe-pos-server",
   "version": "1.0.0",
-  "description": "Backend API server for Odoo Cafe POS System",
+  "description": "Backend API server for The Coffee Concept System",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

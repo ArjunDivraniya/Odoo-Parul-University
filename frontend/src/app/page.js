@@ -42,7 +42,7 @@ const features = [
 ];
 
 export default function Home() {
-  const { cafeName } = useSettings();
+  const { cafeName, loading } = useSettings();
 
   return (
     <div className="min-h-screen bg-[#FCF9F2]">
@@ -59,13 +59,30 @@ export default function Home() {
             className="text-center"
           >
             <div className="flex items-center justify-center mb-10">
-              <div className="h-28 w-28 rounded-[32px] bg-[#3E2B21] flex items-center justify-center shadow-[0_25px_60px_rgba(62,43,33,0.4)] rotate-3 hover:rotate-0 transition-transform duration-500">
-                <Image src="/odoo_cafe_logo.png" alt="logo" width={100} height={100} className="object-contain brightness-0 invert" />
+              <div className="relative group">
+                {/* Ambient Glow */}
+                <div className="absolute -inset-2 bg-gradient-to-r from-[#D4A574] via-[#E8C4A0] to-[#A87B51] rounded-[38px] blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
+                
+                {/* Premium Framed Logo Container */}
+                <div className="relative h-28 w-28 rounded-[32px] bg-white p-3 flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-2 border-white/80 transition-transform duration-500 group-hover:scale-105 overflow-hidden">
+                  <Image 
+                    src="/the_coffee_concept_logo.png" 
+                    alt={cafeName || "Cafe Logo"} 
+                    width={90} 
+                    height={90} 
+                    className="w-full h-full object-contain"
+                    priority
+                  />
+                </div>
               </div>
             </div>
 
-            <h1 className="text-5xl lg:text-7xl font-black mb-6 text-white tracking-tight font-serif">
-              {cafeName}
+            <h1 className="text-5xl lg:text-7xl font-black mb-6 text-white tracking-tight font-serif min-h-[1.2em] flex flex-col items-center justify-center">
+              {loading || !cafeName ? (
+                <span className="inline-block w-64 h-14 bg-white/20 animate-pulse rounded-2xl my-2" />
+              ) : (
+                <span>{cafeName}</span>
+              )}
               <span className="block text-2xl lg:text-3xl font-medium mt-3 text-white/80 font-sans">Smart POS System</span>
             </h1>
 
@@ -136,7 +153,11 @@ export default function Home() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl lg:text-5xl font-black mb-6 text-white font-serif tracking-tight">
-              Join the {cafeName} Family
+              {loading || !cafeName ? (
+                <span>Join Our Cafe Family</span>
+              ) : (
+                <span>Join the {cafeName} Family</span>
+              )}
             </h2>
             <p className="text-lg lg:text-xl text-white/60 mb-12 max-w-2xl mx-auto font-medium">
               Ready to elevate your coffee experience? Sign in to manage your orders efficiently.

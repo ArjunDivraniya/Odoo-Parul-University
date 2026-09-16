@@ -3,7 +3,7 @@
 import { useSettings } from "@/context/SettingsContext";
 
 export default function PrintableReceipt({ order }) {
-  const { cafeName = "Odoo Cafe", receiptFooter = "Thank you for your visit!", currency = "₹" } = useSettings();
+  const { cafeName = "", receiptFooter = "Thank you for your visit!", currency = "₹" } = useSettings();
 
   if (!order) return null;
 
@@ -30,7 +30,7 @@ export default function PrintableReceipt({ order }) {
       <div className="w-[80mm] max-w-full mx-auto p-4 font-mono text-xs leading-tight text-black">
         {/* Header */}
         <div className="text-center pb-2 border-b border-dashed border-black">
-          <h1 className="text-lg font-black uppercase tracking-wider">{cafeName}</h1>
+          <h1 className="text-lg font-black uppercase tracking-wider">{cafeName || "CAFE RECEIPT"}</h1>
           <p className="text-[10px] uppercase font-bold tracking-widest mt-0.5">Smart POS Point</p>
           <p className="text-[11px] font-bold mt-1 tracking-widest">*** TAX INVOICE ***</p>
         </div>

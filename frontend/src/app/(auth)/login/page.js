@@ -81,8 +81,8 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <div className="h-16 w-16 rounded-[20px] bg-white/[0.08] backdrop-blur-xl flex items-center justify-center border border-white/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-              <Image src="/odoo_cafe_logo.png" alt="logo" width={48} height={48} className="object-contain brightness-0 invert opacity-90" />
+            <div className="h-16 w-16 rounded-[20px] bg-white flex items-center justify-center border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.3)] p-2 overflow-hidden">
+              <Image src="/the_coffee_concept_logo.png" alt="logo" width={52} height={52} className="object-contain" priority />
             </div>
           </motion.div>
 
@@ -127,10 +127,10 @@ export default function LoginPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.8 }}
-            className="flex items-center gap-3 text-white/20 text-sm font-medium"
+            className="flex items-center gap-3 text-white/40 text-sm font-medium"
           >
-            <Coffee className="h-4 w-4" />
-            <span>{cafeName} POS · Built for excellence</span>
+            <Coffee className="h-4 w-4 text-[#D4A574]" />
+            <span>{cafeName ? `${cafeName} POS · Built for excellence` : "Smart POS · Built for excellence"}</span>
           </motion.div>
         </div>
       </div>

@@ -1,4 +1,5 @@
-# Odoo Cafe POS ☕️
+
+# The Coffee Concept
 
 <div align="center">
   <h3><strong>Developed by Team Eklavya</strong></h3>
@@ -21,7 +22,7 @@
 
 ## Project Overview
 
-**Odoo Cafe POS** is a modern, decoupled Full-Stack web-based Restaurant Point-of-Sale (POS) system. Built for speed, reliability, and seamless restaurant operations, it leverages a robust JavaScript/TypeScript ecosystem to deliver a high-performance experience for admins, cashiers, and kitchen staff. 
+**The Coffee Concept** is a modern, decoupled Full-Stack web-based Restaurant Point-of-Sale (POS) system. Built for speed, reliability, and seamless restaurant operations, it leverages a robust JavaScript/TypeScript ecosystem to deliver a high-performance experience for admins, cashiers, and kitchen staff. 
 
 Our system strictly adheres to the hackathon specification rules while introducing several key architectural optimizations to handle real-world edge cases like historical price compliance and concurrent table edits.
 
@@ -192,7 +193,7 @@ Here is a comprehensive reference of our backend API routes:
 
 ## Roadmap (Sprint V2)
 
-We are continuously improving Odoo Cafe POS. The following features are planned for our upcoming Sprint V2:
+We are continuously improving The Coffee Concept. The following features are planned for our upcoming Sprint V2:
 
 - **Coupons & Promotion Engines**: A comprehensive system to manage discounts, promotional codes, and automated offers.
 - **Dynamic UI Category Colors**: An automatic UI feature to color-code categories, making navigation even faster for cashiers.

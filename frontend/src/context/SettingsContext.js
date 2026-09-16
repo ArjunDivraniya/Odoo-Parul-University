@@ -7,7 +7,7 @@ const SettingsContext = createContext(null);
 
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState({
-    cafeName: "Odoo Cafe",
+    cafeName: "",
     receiptFooter: "Thank you for your visit!",
     currency: "₹",
     cashEnabled: true,
@@ -70,7 +70,7 @@ export const SettingsProvider = ({ children }) => {
     }
   }, [settings.cafeName]);
 
-  const cafeName = settings.cafeName || "Odoo Cafe";
+  const cafeName = settings.cafeName || "";
   const currency = settings.currency || "₹";
   const receiptFooter = settings.receiptFooter || "Thank you for your visit!";
 
@@ -100,8 +100,8 @@ export const useSettings = () => {
   if (!context) {
     // Provide a fallback so components don't crash if rendered outside provider
     return {
-      settings: { cafeName: "Odoo Cafe", currency: "₹" },
-      cafeName: "Odoo Cafe",
+      settings: { cafeName: "", currency: "₹" },
+      cafeName: "",
       currency: "₹",
       receiptFooter: "Thank you for your visit!",
       loading: false,

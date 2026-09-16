@@ -51,7 +51,7 @@ export default function SignupPage() {
               Create Account
             </h2>
             <p className="mt-2 text-sm text-[#3E2B21]/40 font-medium">
-              Join {cafeName} today.
+              Join {cafeName ? cafeName : "us"} today.
             </p>
 
             {error && (
@@ -185,13 +185,14 @@ export default function SignupPage() {
             transition={{ duration: 0.7 }}
             className="flex justify-end"
           >
-            <div className="h-20 w-20 rounded-[24px] bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/10">
+            <div className="h-20 w-20 rounded-[24px] bg-white flex items-center justify-center shadow-2xl border border-white/80 p-2.5 overflow-hidden">
               <Image
-                src="/odoo_cafe_logo.png"
+                src="/the_coffee_concept_logo.png"
                 alt="logo"
                 width={64}
                 height={64}
-                className="object-contain brightness-0 invert"
+                className="object-contain"
+                priority
               />
             </div>
           </motion.div>
