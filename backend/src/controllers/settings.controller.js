@@ -1,17 +1,23 @@
 const prisma = require('../lib/prisma');
 const { getIo } = require('../lib/socket');
 
+let cachedSettings = null;
+
 exports.getSettings = async (req, res) => {
   try {
-    // Upsert to ensure one row always exists
+    if (cachedSettings) {
+      return res.json(cachedSettings);
+    }
+
     const settings = await prisma.settings.findFirst();
     if (!settings) {
-      // Create default
       const newSettings = await prisma.settings.create({
         data: {}
       });
+      cachedSettings = newSettings;
       return res.json(newSettings);
     }
+    cachedSettings = settings;
     res.json(settings);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -41,6 +47,8 @@ exports.updateSettings = async (req, res) => {
     } else {
         result = await prisma.settings.create({ data });
     }
+
+    cachedSettings = result;
 
     const io = getIo();
     if (io) {

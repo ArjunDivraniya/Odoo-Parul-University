@@ -26,9 +26,9 @@ exports.createRazorpayOrder = async (req, res) => {
     }
 
     if (order.paymentStatus === 'PAID') {
-      return res.status(400).json({ 
-        error: "ALREADY_PAID", 
-        message: "This order is already paid." 
+      return res.status(400).json({
+        error: "ALREADY_PAID",
+        message: "This order is already paid."
       });
     }
 
@@ -80,9 +80,9 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
     // Enforce that payment can only happen when not already paid
     if (order.paymentStatus === 'PAID') {
-      return res.status(400).json({ 
-        error: "ALREADY_PAID", 
-        message: "This order is already paid." 
+      return res.status(400).json({
+        error: "ALREADY_PAID",
+        message: "This order is already paid."
       });
     }
 
@@ -137,7 +137,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
     // Mark Order as PAID
     const updatedOrder = await prisma.order.update({
       where: { id: order.id },
-      data: { 
+      data: {
         status: 'PAID',
         paymentStatus: 'PAID'
       },
@@ -216,10 +216,10 @@ exports.sendWhatsAppReceipt = async (req, res) => {
     const { orderId, phone } = req.body;
 
     if (!whatsappService.isReady()) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'WHATSAPP_NOT_CONNECTED',
-        message: 'WhatsApp server client is not authenticated. Please scan the QR code in the terminal.' 
+        message: 'WhatsApp server client is not authenticated. Please scan the QR code in the terminal.'
       });
     }
 
@@ -237,16 +237,16 @@ exports.sendWhatsAppReceipt = async (req, res) => {
     const discount = Number(order.discountAmount) || 0;
     const total = Number(order.totalAmount);
     const tableName = order.table ? order.table.name : 'Takeaway';
-    const paymentMethodDisplay = order.payments && order.payments.length > 0 
-      ? order.payments.map(p => p.method).join(', ') 
+    const paymentMethodDisplay = order.payments && order.payments.length > 0
+      ? order.payments.map(p => p.method).join(', ')
       : 'PAID';
 
-    const itemsText = order.items.map(item => 
+    const itemsText = order.items.map(item =>
       `- ${item.quantity}x ${item.productName}${item.variantName ? ` (${item.variantName})` : ''} - ₹${(Number(item.price) * item.quantity).toFixed(2)}`
     ).join('\n');
 
     const settings = await prisma.settings.findFirst();
-    const cafeName = settings?.cafeName || 'Odoo Cafe';
+    const cafeName = settings?.cafeName || 'The Coffe Concept';
     const footerText = settings?.receiptFooter || 'Thank you for dining with us!';
 
     const message = `*${cafeName} Receipt*\n--------------------------\nOrder: ${order.orderNumber}\nDate: ${new Date(order.updatedAt || order.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\nTable: ${tableName}\nCustomer: ${order.customerName || 'Guest'}\n--------------------------\nItems:\n${itemsText}\n--------------------------\nSubtotal: ₹${subtotal.toFixed(2)}\n${discount > 0 ? `Discount: -₹${discount.toFixed(2)}\n` : ''}${tax > 0 ? `Tax: ₹${tax.toFixed(2)}\n` : ''}Total Amount: ₹${total.toFixed(2)}\n--------------------------\nPayment Method: ${paymentMethodDisplay}\n${footerText}`;

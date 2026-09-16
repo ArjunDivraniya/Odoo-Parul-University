@@ -50,10 +50,10 @@ function toPublicUser(user) {
     updatedAt: user.updatedAt,
     shop: user.shop
       ? {
-          id: user.shop.id,
-          name: user.shop.name,
-          slug: user.shop.slug,
-        }
+        id: user.shop.id,
+        name: user.shop.name,
+        slug: user.shop.slug,
+      }
       : null,
   };
 }
@@ -172,7 +172,7 @@ async function requestPasswordReset(payload) {
     to: user.email,
     name: user.name,
     resetLink: buildResetLink(token),
-    shopName: user.shop?.name || 'Odoo Cafe',
+    shopName: user.shop?.name || 'The Coffe Concept',
   });
 
   return {

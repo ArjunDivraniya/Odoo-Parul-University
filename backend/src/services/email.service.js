@@ -9,7 +9,7 @@ exports.sendBill = async (order) => {
     const emailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : '';
 
     const settings = await prisma.settings.findFirst();
-    const cafeName = settings?.cafeName || 'Odoo Cafe';
+    const cafeName = settings?.cafeName || 'The Coffe Concept';
     const footerMsg = settings?.receiptFooter || 'Thank you for dining with us!';
 
     if (!emailUser || !emailPass) {
@@ -31,10 +31,10 @@ exports.sendBill = async (order) => {
     const tax = Number(order.taxAmount) || 0;
     const discount = Number(order.discountAmount) || 0;
     const total = Number(order.totalAmount);
-    
+
     // Extract payment method(s)
-    const paymentMethod = order.payments && order.payments.length > 0 
-      ? order.payments.map(p => p.method).join(', ') 
+    const paymentMethod = order.payments && order.payments.length > 0
+      ? order.payments.map(p => p.method).join(', ')
       : 'CASH'; // fallback for cash if payments relation was not included
 
     const tableName = order.table ? order.table.name : 'Takeaway';

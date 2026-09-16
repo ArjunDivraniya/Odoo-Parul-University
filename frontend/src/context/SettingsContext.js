@@ -17,6 +17,22 @@ export const SettingsProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(true);
 
+  // Synchronously load cached settings on initial mount for 0ms instant display
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("app_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.cafeName) {
+          setSettings(parsed);
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      console.error("Error reading cached settings:", e);
+    }
+  }, []);
+
   const fetchSettings = useCallback(async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001/api";
@@ -28,6 +44,9 @@ export const SettingsProvider = ({ children }) => {
         const data = await res.json();
         if (data && data.cafeName) {
           setSettings(data);
+          try {
+            localStorage.setItem("app_settings", JSON.stringify(data));
+          } catch (e) {}
         }
       }
     } catch (err) {
@@ -49,6 +68,9 @@ export const SettingsProvider = ({ children }) => {
     const handleSettingsUpdate = (updatedSettings) => {
       if (updatedSettings && updatedSettings.cafeName) {
         setSettings(updatedSettings);
+        try {
+          localStorage.setItem("app_settings", JSON.stringify(updatedSettings));
+        } catch (e) {}
       } else {
         fetchSettings();
       }
@@ -75,7 +97,13 @@ export const SettingsProvider = ({ children }) => {
   const receiptFooter = settings.receiptFooter || "Thank you for your visit!";
 
   const updateSettingsState = useCallback((newSettings) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem("app_settings", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   }, []);
 
   return (

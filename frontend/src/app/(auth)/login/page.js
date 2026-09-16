@@ -17,7 +17,7 @@ export default function LoginPage() {
   const { login, isLoading, error } = useAuthStore();
   const { cafeName } = useSettings();
   const router = useRouter();
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, setValue } = useForm();
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLoginSuccess = (user) => {
@@ -38,10 +38,12 @@ export default function LoginPage() {
 
   const handleQuickLogin = async (role) => {
     let email = "";
-    let password = "password123";
-    if (role === "admin") email = "admin@odoo-cafe.com";
-    if (role === "kitchen") email = "gordon@odoo-cafe.com";
-    if (role === "cashier") email = "jagjeet@odoo-cafe.com";
+    let password = "123456789";
+    if (role === "admin") email = "arjundivraniya8@gmail.com";
+    if (role === "kitchen") email = "s2@gmail.com";
+    if (role === "employee" || role === "cashier") email = "s1@gmail.com";
+    setValue("email", email);
+    setValue("password", password);
     const user = await login(email, password);
     if (user) handleLoginSuccess(user);
   };
@@ -188,7 +190,7 @@ export default function LoginPage() {
               {[
                 { role: "admin", emoji: "👑", label: "Admin", color: "from-[#F5EFE6] to-[#EDE4D4]" },
                 { role: "kitchen", emoji: "👨‍🍳", label: "Kitchen", color: "from-[#F5EFE6] to-[#EDE4D4]" },
-                { role: "cashier", emoji: "🛒", label: "Cashier", color: "from-[#F5EFE6] to-[#EDE4D4]" },
+                { role: "employee", emoji: "💼", label: "Employee", color: "from-[#F5EFE6] to-[#EDE4D4]" },
               ].map(({ role, emoji, label, color }) => (
                 <button
                   key={role}
@@ -228,7 +230,7 @@ export default function LoginPage() {
                 <Input
                   {...register("email")}
                   type="email"
-                  placeholder="barista@odoocafe.com"
+                  placeholder="arjundivraniya8@gmail.com"
                   className="h-[54px] rounded-[16px] border-[#2A1A10]/[0.06] bg-white focus:border-[#2A1A10]/15 focus:ring-2 focus:ring-[#2A1A10]/[0.04] text-[15px] font-medium text-[#2A1A10] placeholder:text-[#2A1A10]/20 shadow-[0_2px_8px_rgba(42,26,16,0.02)] transition-all duration-200 group-hover:border-[#2A1A10]/10"
                 />
               </div>

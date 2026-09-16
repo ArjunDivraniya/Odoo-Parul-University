@@ -46,11 +46,11 @@ const sendOrderReceipt = async (req, res) => {
         const mailOptions = {
             from: 'Crush Coffee',
             to: recipientEmail,
-            subject: `Receipt for Order ${order.orderNumber} - Odoo Cafe`,
+            subject: `Receipt for Order ${order.orderNumber} - The Coffe Concept`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
                     <div style="background-color: #1A4D2E; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                        <h1>Odoo Cafe</h1>
+                        <h1>The Coffe Concept</h1>
                         <p>Order Receipt</p>
                     </div>
                     <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">

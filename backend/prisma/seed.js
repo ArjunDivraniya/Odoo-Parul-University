@@ -38,7 +38,7 @@ async function createTenant() {
   const shop = await prisma.shop.create({
     data: {
       name: 'Odoo Cafe',
-      slug: `${slugify('Odoo Cafe')}-${crypto.randomBytes(3).toString('hex')}`,
+      slug: `${slugify('The Coffe Concept')}-${crypto.randomBytes(3).toString('hex')}`,
       adminId: admin.id,
     },
   });
